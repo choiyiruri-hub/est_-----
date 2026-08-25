@@ -172,19 +172,19 @@
     const posterPreview = document.querySelector("#poster-preview");
     const posterPreviewImage = document.querySelector("#poster-preview-image");
 
-    function populateTimeOptions(select) {
+    function populateTimeOptions(select, limit, step) {
       const fragment = document.createDocumentFragment();
-      for (let hour = 0; hour < 24; hour += 1) {
-        for (let minute = 0; minute < 60; minute += 10) {
-          const value = String(hour).padStart(2, "0") + ":" + String(minute).padStart(2, "0");
-          fragment.appendChild(new Option(value, value));
-        }
+      for (let number = 0; number < limit; number += step) {
+        const value = String(number).padStart(2, "0");
+        fragment.appendChild(new Option(value, value));
       }
       select.appendChild(fragment);
     }
 
-    populateTimeOptions(form.elements.startTime);
-    populateTimeOptions(form.elements.endTime);
+    populateTimeOptions(form.elements.startHour, 24, 1);
+    populateTimeOptions(form.elements.endHour, 24, 1);
+    populateTimeOptions(form.elements.startMinute, 60, 10);
+    populateTimeOptions(form.elements.endMinute, 60, 10);
 
     function showPoster(source) {
       posterPreview.hidden = !source;
@@ -195,7 +195,13 @@
     if (course) {
       title.textContent = "교육 정보 수정";
       submit.textContent = "변경사항 저장";
-      ["name", "date", "startTime", "endTime", "place", "capacity", "instructorName", "instructorBio", "description"].forEach(function (key) { form.elements[key].value = course[key] || ""; });
+      ["name", "date", "place", "capacity", "instructorName", "instructorBio", "description"].forEach(function (key) { form.elements[key].value = course[key] || ""; });
+      const startParts = String(course.startTime || "").split(":");
+      const endParts = String(course.endTime || "").split(":");
+      form.elements.startHour.value = startParts[0] || "";
+      form.elements.startMinute.value = startParts[1] || "";
+      form.elements.endHour.value = endParts[0] || "";
+      form.elements.endMinute.value = endParts[1] || "";
       showPoster(course.poster || "");
       cancel.href = "education-detail.html?id=" + course.id;
     }
@@ -236,7 +242,9 @@
     updateDeadline();
     form.addEventListener("submit", async function (event) {
       event.preventDefault();
-      if (form.elements.endTime.value <= form.elements.startTime.value) {
+      const startTime = form.elements.startHour.value + ":" + form.elements.startMinute.value;
+      const endTime = form.elements.endHour.value + ":" + form.elements.endMinute.value;
+      if (endTime <= startTime) {
         setMessage(document.querySelector("#form-message"), "종료시간은 시작시간보다 늦어야 합니다.", "error");
         return;
       }
@@ -254,7 +262,7 @@
       }
       delete values.posterFile;
       const courseValues = {
-        name: values.name.trim(), date: values.date, startTime: values.startTime, endTime: values.endTime,
+        name: values.name.trim(), date: values.date, startTime: startTime, endTime: endTime,
         place: values.place.trim(), capacity: Number(values.capacity), instructorName: values.instructorName.trim(),
         instructorBio: values.instructorBio.trim(), description: values.description.trim(), poster: poster
       };
@@ -486,7 +494,7 @@
       return;
     }
     if (activeApplicants(course).length >= Number(course.capacity)) {
-      setMessage(document.querySelector("#capacity-notice"), "현재 신청 인원이 정원에 도달했습니다. 신청은 가능하지만, 교육 관리자가 참여 가능 여부를 확인한 후 별도로 연락드립니다.", "warning");
+      setMessage(document.querySelector("#capacity-notice"), "현재 신청 인원이 정원에 도달했습니다. 신청은 가능하지만, 교육 관리자가 참여 가능 여부를 확인한 후 별도로 연락드리겠습니다.", "warning");
     }
     let duplicateConfirmed = false;
     form.addEventListener("submit", function (event) {
@@ -521,8 +529,9 @@
       const overCapacity = activeApplicants(course).length > Number(course.capacity);
       saveCourses(courses);
       form.hidden = true;
+      document.querySelector("#capacity-notice").hidden = true;
       setMessage(document.querySelector("#apply-message"), overCapacity
-        ? "신청이 접수되었습니다. 현재 정원을 초과하여 교육 관리자가 참여 가능 여부를 확인한 후 별도로 연락드립니다."
+        ? "신청이 접수되었습니다.\n현재 정원을 초과하여 교육 관리자가 참여 가능 여부를 확인한 후 별도로 연락드리겠습니다."
         : "정상 신청으로 접수되었습니다.", overCapacity ? "warning" : "success");
     });
     form.elements.phone.addEventListener("input", function (event) {

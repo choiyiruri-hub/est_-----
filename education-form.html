@@ -15,8 +15,8 @@
           <label class="field field-full"><span>교육명 <b class="required">*</b></span><input name="name" required placeholder="예: 신규 입사자 온보딩 교육"></label>
           <label class="field"><span>교육일 <b class="required">*</b></span><input type="date" name="date" required></label>
           <label class="field"><span>장소 <b class="required">*</b></span><input name="place" required placeholder="예: 본관 3층 교육장"></label>
-          <label class="field"><span>시작시간 <b class="required">*</b></span><select name="startTime" required><option value="">시작시간 선택</option></select></label>
-          <label class="field"><span>종료시간 <b class="required">*</b></span><select name="endTime" required><option value="">종료시간 선택</option></select></label>
+          <div class="field"><span class="field-label">시작시간 <b class="required">*</b></span><div class="time-fields"><select name="startHour" required aria-label="시작 시"><option value="">시</option></select><span>시</span><select name="startMinute" required aria-label="시작 분"><option value="">분</option></select><span>분</span></div></div>
+          <div class="field"><span class="field-label">종료시간 <b class="required">*</b></span><div class="time-fields"><select name="endHour" required aria-label="종료 시"><option value="">시</option></select><span>시</span><select name="endMinute" required aria-label="종료 분"><option value="">분</option></select><span>분</span></div></div>
           <label class="field"><span>정원 <b class="required">*</b></span><input type="number" name="capacity" min="1" required placeholder="20"></label>
           <div class="field"><span class="field-label">자동 신청 마감</span><div id="application-deadline" class="readonly-value"></div><span class="helper">교육일 하루 전 17:00으로 자동 설정됩니다.</span></div>
           <label class="field field-full"><span>강사 이름 <b class="required">*</b></span><input name="instructorName" required placeholder="예: 홍길동 강사"></label>

@@ -235,6 +235,8 @@ label.field { display: grid; gap: 8px; }
 .required { color: var(--danger); }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 .field-full { grid-column: 1 / -1; }
+.time-fields { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.time-fields > span { color: var(--text-muted); font-weight: 650; }
 .poster-preview { display: grid; gap: 8px; }
 .poster-preview img {
   display: block;
@@ -322,6 +324,7 @@ tbody tr:hover { background: var(--primary-soft); }
 .notice-success { border-color: #c5dda9; border-left-color: var(--accent-green); background: var(--accent-green-soft); color: var(--accent-green-strong); }
 .notice-warning { border-color: #efd49c; border-left-color: var(--accent-warm); background: var(--accent-warm-soft); color: var(--accent-warm-strong); }
 .notice-error { border-color: #ebc0c0; border-left-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
+#apply-message { white-space: pre-line; }
 
 .meta-grid {
   display: grid;
