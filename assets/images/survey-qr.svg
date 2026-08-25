@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-labelledby="title desc">
+  <title id="title">만족도 조사 Mock QR</title>
+  <desc id="desc">실제 QR 코드가 아닌 단순한 SVG 플레이스홀더입니다.</desc>
+  <rect width="240" height="240" rx="18" fill="#ffffff"/>
+  <g fill="#17324d">
+    <path d="M20 20h68v68H20zm12 12v44h44V32zm10 10h24v24H42zM152 20h68v68h-68zm12 12v44h44V32zm10 10h24v24h-24zM20 152h68v68H20zm12 12v44h44v-44zm10 10h24v24H42z"/>
+    <path d="M105 20h16v16h-16zM125 20h14v34h-14zM102 48h18v18h-18zM112 78h28v14h-28zM96 102h18v18H96zM122 102h18v36h-18zM148 102h16v16h-16zM174 102h46v14h-46zM102 130h16v38h-16zM130 146h18v18h-18zM156 126h16v38h-16zM180 124h18v18h-18zM204 124h16v42h-16zM96 178h18v42H96zM122 174h36v16h-36zM132 198h16v22h-16zM160 174h16v16h-16zM182 150h16v40h-16zM158 198h38v22h-38zM204 178h16v42h-16z"/>
+  </g>
+  <rect x="74" y="95" width="92" height="50" rx="10" fill="#fff" stroke="#d8e2ec"/>
+  <text x="120" y="116" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#17324d">MOCK QR</text>
+  <text x="120" y="133" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#587086">설문 화면으로 이동</text>
+</svg>

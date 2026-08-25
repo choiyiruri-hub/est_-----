@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>교육 생성 / 수정 | 교육 운영 관리</title><link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="education-form">
+  <header class="site-header"><a class="brand" href="index.html"><span class="brand-mark"><img src="assets/images/K-HP 로고만.png" alt=""></span><span>교육 운영 관리</span></a><nav class="site-nav"><a class="active" href="index.html">교육 관리</a><a href="survey-settings.html">만족도 문항 설정</a><a href="login.html">로그아웃</a></nav></header>
+  <main class="page-shell narrow">
+    <div class="page-heading"><div><h1 id="form-title">새 교육 생성</h1><p>기본 정보를 입력하면 신청 마감이 자동으로 계산됩니다.</p></div></div>
+    <div id="form-message" role="alert" hidden></div>
+    <section class="card">
+      <form id="education-form">
+        <div class="form-grid">
+          <label class="field field-full"><span>교육명 <b class="required">*</b></span><input name="name" required placeholder="예: 신규 입사자 온보딩 교육"></label>
+          <label class="field"><span>교육일 <b class="required">*</b></span><input type="date" name="date" required></label>
+          <label class="field"><span>장소 <b class="required">*</b></span><input name="place" required placeholder="예: 본관 3층 교육장"></label>
+          <label class="field"><span>시작시간 <b class="required">*</b></span><select name="startTime" required><option value="">시작시간 선택</option></select></label>
+          <label class="field"><span>종료시간 <b class="required">*</b></span><select name="endTime" required><option value="">종료시간 선택</option></select></label>
+          <label class="field"><span>정원 <b class="required">*</b></span><input type="number" name="capacity" min="1" required placeholder="20"></label>
+          <div class="field"><span class="field-label">자동 신청 마감</span><div id="application-deadline" class="readonly-value"></div><span class="helper">교육일 하루 전 17:00으로 자동 설정됩니다.</span></div>
+          <label class="field field-full"><span>강사 이름 <b class="required">*</b></span><input name="instructorName" required placeholder="예: 홍길동 강사"></label>
+          <label class="field field-full"><span>강사 이력 <b class="required">*</b></span><textarea name="instructorBio" rows="4" required placeholder="주요 경력과 전문 분야를 입력해 주세요."></textarea></label>
+          <label class="field field-full"><span>교육 내용 <b class="required">*</b></span><textarea name="description" rows="6" required placeholder="교육 목표, 주요 내용, 진행 방식을 입력해 주세요."></textarea></label>
+          <label class="field field-full"><span>교육 포스터</span><input id="poster-file" type="file" name="posterFile" accept="image/png,image/jpeg,image/webp"><span class="helper">PNG, JPG 또는 WebP 이미지 파일을 등록할 수 있습니다. 최대 1MB</span></label>
+          <div id="poster-preview" class="poster-preview field-full" hidden><span class="field-label">포스터 미리보기</span><img id="poster-preview-image" alt="등록할 교육 포스터 미리보기"></div>
+        </div>
+        <div class="notice notice-info" style="margin-top:24px">신청 항목은 개인정보 수집·이용 동의, 마케팅 정보 수신 동의, 이름, 전화번호, 이메일, 주민등록번호 전체, 소속(재직기관)으로 공통 적용됩니다. 현재 저장된 공통 만족도 문항은 교육 생성 시 복사되며 이후 원본 문항이 바뀌어도 유지됩니다.</div>
+        <div class="form-actions"><a id="education-cancel" class="button button-ghost" href="index.html">취소</a><button id="education-submit" class="button" type="submit">교육 생성</button></div>
+      </form>
+    </section>
+  </main>
+  <script src="js/mock-data.js"></script><script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>교육 신청 | 교육 운영 관리</title><link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="apply">
+  <main class="public-shell">
+    <a class="brand public-brand" href="login.html"><span class="brand-mark"><img src="assets/images/K-HP 로고만.png" alt=""></span><span>교육 운영 관리</span></a>
+    <section class="public-card">
+      <h1 id="public-course-title" class="public-title">교육 신청</h1><p class="public-subtitle">아래 정보를 입력해 교육을 신청해 주세요.</p>
+      <div id="public-course-meta" class="public-meta"></div>
+      <section id="public-course-info" class="course-info-card" aria-label="교육 상세 안내" hidden></section>
+      <div id="apply-period-notice" role="status" hidden></div><div id="capacity-notice" role="status" hidden></div><div id="apply-message" role="alert" hidden></div>
+      <form id="apply-form" class="stack">
+        <fieldset class="consent-section">
+          <legend><span class="consent-badge consent-required">필수</span> 개인정보 수집·이용에 동의하십니까?</legend>
+          <div class="consent-copy" tabindex="0">
+            <ol>
+              <li>
+                고용노동부에서는 근로자 직업능력개발훈련 지원제도 운영에 있어 개인을 고유하게 구별하기 위해 부여된 식별정보(주민등록번호 등)를 포함한 개인정보를 다음과 같이 직업능력개발정보망(HRD-Net)에 수집·이용하고 있습니다.
+                <ul>
+                  <li><strong>개인정보의 수집·이용 목적:</strong> 훈련비용 지원, 개인별 훈련이력 관리, 정부의 직업능력개발훈련 제도 실적·성과 평가, 모니터링(훈련 수강 안내) 등에 활용</li>
+                  <li><strong>수집하는 개인정보 항목:</strong> 성명, 주민등록번호(필수), 휴대전화번호, 재직기관, 이메일, 지문(선택)</li>
+                  <li><strong>개인정보의 보유 및 이용기간:</strong> 직업능력개발정보망(HRD-Net)에서 수집·계속 관리</li>
+                </ul>
+                <p>※ 개인정보 수집·이용에 동의하지 않을 수 있으나, 동의를 거부할 경우에는 해당 서비스를 제공받을 수 없습니다.</p>
+              </li>
+              <li>사업주 직업능력개발훈련 지원제도 운영을 위해서는 개인을 고유하게 구별하기 위해 부여된 식별정보(주민등록번호 등)를 포함한 개인정보가 필요하며, 고용노동부는 「개인정보 보호법」에 따라 훈련생으로부터 제공받는 개인정보를 보호하여야 합니다.</li>
+              <li>고용노동부는 개인정보를 처리 목적에 필요한 범위에서 적합하게 처리하고 그 목적 외의 용도로 사용하지 않으며 개인정보를 제공한 훈련생은 언제나 자신이 입력한 개인정보의 열람·수정을 신청할 수 있습니다. 다만, 훈련실시 및 비용지원 등에 관한 정보는 오류가 있는 경우를 제외하고는 수정·삭제를 요청할 수 없습니다.</li>
+              <li>
+                본인은 위 1~3의 내용에 따른 사업주 직업능력개발훈련 지원제도 운영을 위해 개인식별정보(주민등록번호 등)를 제공할 것을 동의합니다.
+                <ul>
+                  <li><strong>수집 목적:</strong> 훈련 일정 및 장소 안내</li>
+                  <li><strong>수집 항목:</strong> 이름, 주민등록번호, 재직 기업, 연락처, 이메일 주소</li>
+                  <li><strong>보유 및 이용 기간:</strong> 입력일로부터 1년간</li>
+                </ul>
+                <p>※ 본 개인정보 수집 및 이용 동의에 동의하지 않을 경우, 해당 서비스를 이용할 수 없습니다. 동의는 귀하의 자유로운 선택이며, 동의를 거부할 권리가 있습니다.</p>
+              </li>
+            </ol>
+          </div>
+          <div class="consent-options" role="radiogroup" aria-label="개인정보 수집·이용 동의 답변">
+            <label><input type="radio" name="privacyConsent" value="동의" required><span>네, 동의합니다.</span></label>
+            <label><input type="radio" name="privacyConsent" value="미동의" required><span>동의하지 않습니다.</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="consent-section">
+          <legend><span class="consent-badge consent-optional">선택</span> 마케팅 정보 수신에 동의하십니까?</legend>
+          <div class="consent-copy" tabindex="0">
+            <p>“제주한라대학교 K-하이테크 플랫폼 사업단”(이하 “사업단”)은 「정보통신망 이용촉진 및 정보보호에 관한 법률」, 「개인정보 보호법」 등 관계 법령에 따라 광고성 정보를 전송하기 위해 수신자의 사전 수신 동의를 받고 있으며, 광고성 정보 수신자의 수신 동의 여부를 정기적으로 확인합니다. 다만 동의하지 않을 경우, 훈련정보 제공, 훈련 수요조사 안내, 사은행사, 판촉행사 등 이용목적에 따른 혜택에 제한이 있을 수 있습니다.</p>
+            <p><strong>[서비스 안내 및 이용권유를 위한 수집·이용]</strong></p>
+            <p><strong>○ 마케팅 정보 수집·이용 목적</strong></p>
+            <ul>
+              <li>신규 훈련과정 개설 및 K-하이테크 플랫폼 행사, 사은행사 정보 제공</li>
+              <li>차년도 훈련과정 개설을 위한 수요조사</li>
+            </ul>
+            <p><strong>○ 수집 항목:</strong> 이름, 이메일, 전화번호, 기관/기업/단체명</p>
+            <p><strong>○ 마케팅 정보 보유 및 이용기간:</strong> 5년 보관 후 파기 또는 마케팅 정보 활용 수신 동의 철회 시까지. 상기 내용이 변동되는 경우 가입하실 때 입력한 이메일 등을 통해 그 내용을 안내해 드리겠습니다.</p>
+            <p>※ 본 동의는 선택동의로서 거부하실 수 있으며, 거부하시더라도 서비스 이용에는 제한이 없습니다.</p>
+          </div>
+          <div class="consent-options" role="radiogroup" aria-label="마케팅 정보 수신 동의 답변">
+            <label><input type="radio" name="marketingConsent" value="동의" required><span>네, 동의합니다.</span></label>
+            <label><input type="radio" name="marketingConsent" value="미동의" required><span>동의하지 않습니다.</span></label>
+          </div>
+        </fieldset>
+        <div class="notice notice-warning">프로토타입 화면입니다. 실제 개인정보 대신 테스트 정보를 입력해 주세요.</div>
+        <label class="field"><span>이름 <b class="required">*</b></span><input name="name" required autocomplete="name" placeholder="예: 홍길동"></label>
+        <label class="field"><span>전화번호 <b class="required">*</b></span><input type="tel" name="phone" required autocomplete="tel" inputmode="numeric" maxlength="13" placeholder="010-0000-0000" pattern="[0-9-]{12,13}"></label>
+        <label class="field"><span>이메일 주소 <b class="required">*</b></span><input type="email" name="email" required autocomplete="email" placeholder="example@email.com"></label>
+        <label class="field"><span>주민등록번호 전체 <b class="required">*</b></span><input name="resident" required placeholder="테스트 번호를 입력하세요" autocomplete="off"></label>
+        <label class="field"><span>소속(재직기관) <b class="required">*</b></span><input name="organization" required placeholder="예: 제주한라대학교"></label>
+        <button id="apply-submit" class="button" type="submit">교육 신청하기</button>
+      </form>
+    </section>
+  </main>
+  <script src="js/mock-data.js"></script><script src="js/app.js"></script>
+</body>
+</html>
