@@ -25,12 +25,12 @@
       <div class="table-wrap"><table><thead><tr><th><input id="select-all" type="checkbox" aria-label="전체 선택"></th><th>이름</th><th>전화번호</th><th>이메일</th><th>주민등록번호</th><th>소속</th><th>개인정보</th><th>신청일시</th><th>신청 구분</th><th>상태</th><th>통화</th><th>문자</th><th>출석</th><th>만족도</th><th>관리</th></tr></thead><tbody id="applicant-body"></tbody></table></div>
     </section>
     <section id="contact-panel" class="card tab-panel" role="tabpanel" hidden>
-      <div class="card-header"><div><h2>연락 관리</h2><p>통화와 문자 상태는 서로 독립적으로 관리됩니다.</p></div><button id="mark-all-sms-sent" class="button button-secondary" type="button">전체 발송 완료</button></div><div id="contact-summary" class="summary-grid"></div>
-      <div class="table-wrap"><table><thead><tr><th>이름</th><th>전화번호</th><th>통화 상태</th><th>문자 상태</th></tr></thead><tbody id="contact-body"></tbody></table></div>
+      <div class="card-header"><div><h2>연락 관리</h2><p>통화와 문자 상태는 서로 독립적으로 관리됩니다.</p></div></div><div id="contact-summary" class="summary-grid"></div>
+      <div class="table-wrap"><table><thead><tr><th><input id="contact-select-all" type="checkbox" aria-label="연락 대상 전체 선택"></th><th>이름</th><th>전화번호</th><th>통화 상태</th><th><div class="table-heading-action"><span>문자 상태</span><button id="mark-selected-sms-sent" class="button button-small button-secondary" type="button" disabled>발송 완료</button></div></th></tr></thead><tbody id="contact-body"></tbody></table></div>
     </section>
     <section id="attendance-panel" class="card tab-panel" role="tabpanel" hidden>
-      <div class="card-header"><div><h2>출석 관리</h2><p>취소된 신청자는 출석 대상에서 자동 제외됩니다.</p></div></div><div id="attendance-summary" class="summary-grid"></div>
-      <div class="table-wrap"><table><thead><tr><th>이름</th><th>소속</th><th>출석 상태</th></tr></thead><tbody id="attendance-body"></tbody></table></div>
+      <div class="card-header"><div><h2>출석 관리</h2><p>취소된 신청자는 출석 대상에서 자동 제외됩니다.</p></div><button id="mark-selected-attended" class="button button-secondary" type="button" disabled>선택 출석 처리</button></div><div id="attendance-summary" class="summary-grid"></div>
+      <div class="table-wrap"><table><thead><tr><th><input id="attendance-select-all" type="checkbox" aria-label="출석 대상 전체 선택"></th><th>이름</th><th>소속</th><th>출석 상태</th></tr></thead><tbody id="attendance-body"></tbody></table></div>
     </section>
     <section id="survey-panel" class="card tab-panel" role="tabpanel" hidden>
       <div class="card-header"><div><h2>만족도 관리</h2><p>QR 이미지를 누르면 수강생용 만족도 조사 화면으로 이동합니다.</p></div><div id="survey-period-state"></div></div>
@@ -39,7 +39,7 @@
     <section id="results-panel" class="card tab-panel" role="tabpanel" hidden>
       <div class="card-header"><div><h2>만족도 결과</h2><p>전체 응답: <strong id="response-count"></strong></p></div></div>
       <section class="overall-stat-section" aria-labelledby="overall-stat-title"><h3 id="overall-stat-title">전체 통계</h3><div id="overall-results-summary" class="summary-grid overall-stat-grid"></div></section>
-      <div class="result-grid"><div class="result-box"><h3>문항별 평균 점수</h3><div id="score-results"></div></div><div class="result-box"><h3>사람별 상세 응답</h3><select id="respondent-select" aria-label="응답자 선택"></select><div id="respondent-detail" style="margin-top:12px"></div></div></div>
+      <div class="result-grid"><div class="result-box"><h3>문항별 평균 점수</h3><div id="overall-score-chart"></div><div id="score-results"></div></div><div class="result-box"><h3>사람별 상세 응답</h3><select id="respondent-select" aria-label="응답자 선택"></select><div id="respondent-detail" style="margin-top:12px"></div></div></div>
       <div class="result-box" style="margin-top:18px"><h3>주관식 답변</h3><div id="text-results"></div></div>
     </section>
   </main>

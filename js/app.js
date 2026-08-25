@@ -61,6 +61,11 @@
     if (digits.length <= 7) return digits.slice(0, 3) + "-" + digits.slice(3);
     return digits.slice(0, 3) + "-" + digits.slice(3, 7) + "-" + digits.slice(7);
   }
+  function formatResident(value) {
+    const digits = String(value || "").replace(/\D/g, "").slice(0, 13);
+    if (digits.length <= 6) return digits;
+    return digits.slice(0, 6) + "-" + digits.slice(6);
+  }
   function activeApplicants(course) { return course.applicants.filter(function (item) { return item.status !== "취소"; }); }
   function counts(course) {
     const active = activeApplicants(course);
@@ -331,12 +336,12 @@
     }
 
     function contactRow(applicant) {
-      return "<tr><td>" + escapeHtml(applicant.name) + "</td><td>" + escapeHtml(applicant.phone) + "</td>" +
+      return '<tr><td><input type="checkbox" class="contact-check" value="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 선택"></td><td>' + escapeHtml(applicant.name) + "</td><td>" + escapeHtml(applicant.phone) + "</td>" +
         '<td><select data-call="' + applicant.id + '"><option>미통화</option><option>부재</option><option>통화완료</option></select></td>' +
         '<td><select data-sms="' + applicant.id + '"><option>미발송</option><option>발송완료</option></select></td></tr>';
     }
     function attendanceRow(applicant) {
-      return "<tr><td>" + escapeHtml(applicant.name) + "</td><td>" + escapeHtml(applicant.organization) + "</td>" +
+      return '<tr><td><input type="checkbox" class="attendance-check" value="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 선택"></td><td>' + escapeHtml(applicant.name) + "</td><td>" + escapeHtml(applicant.organization) + "</td>" +
         '<td><select data-attendance="' + applicant.id + '"><option>미확인</option><option>출석</option><option>결석</option></select></td></tr>';
     }
     function renderAll() {
@@ -346,10 +351,16 @@
       document.querySelector("#over-count").classList.toggle("text-danger", count.over > 0);
       document.querySelector("#applicant-body").innerHTML = course.applicants.map(applicantRow).join("") || '<tr><td colspan="15" class="empty-cell">신청자가 없습니다.</td></tr>';
       const active = activeApplicants(course);
-      const allSmsButton = document.querySelector("#mark-all-sms-sent");
-      allSmsButton.disabled = !active.length || active.every(function (applicant) { return applicant.smsStatus === "발송완료"; });
-      document.querySelector("#contact-body").innerHTML = active.map(contactRow).join("") || '<tr><td colspan="4" class="empty-cell">연락 대상이 없습니다.</td></tr>';
-      document.querySelector("#attendance-body").innerHTML = active.map(attendanceRow).join("") || '<tr><td colspan="3" class="empty-cell">출석 대상이 없습니다.</td></tr>';
+      document.querySelector("#contact-body").innerHTML = active.map(contactRow).join("") || '<tr><td colspan="5" class="empty-cell">연락 대상이 없습니다.</td></tr>';
+      document.querySelector("#attendance-body").innerHTML = active.map(attendanceRow).join("") || '<tr><td colspan="4" class="empty-cell">출석 대상이 없습니다.</td></tr>';
+      ["contact-select-all", "attendance-select-all"].forEach(function (id) {
+        const box = document.querySelector("#" + id);
+        box.checked = false;
+        box.indeterminate = false;
+        box.disabled = !active.length;
+      });
+      document.querySelector("#mark-selected-sms-sent").disabled = true;
+      document.querySelector("#mark-selected-attended").disabled = true;
       document.querySelectorAll("[data-call]").forEach(function (select) { const item = course.applicants.find(function (a) { return a.id === select.dataset.call; }); select.value = item.callStatus; });
       document.querySelectorAll("[data-sms]").forEach(function (select) { const item = course.applicants.find(function (a) { return a.id === select.dataset.sms; }); select.value = item.smsStatus; });
       document.querySelectorAll("[data-attendance]").forEach(function (select) { const item = course.applicants.find(function (a) { return a.id === select.dataset.attendance; }); select.value = item.attendance; });
@@ -364,6 +375,25 @@
       document.querySelector("#survey-summary").innerHTML = '<div class="summary-card"><span>응답완료</span><strong>' + completed + '명</strong></div><div class="summary-card"><span>미응답</span><strong>' + Math.max(0, active.length - completed) + "명</strong></div>";
     }
     function renderSurveyResults() {
+      function scoreDistribution(label, values, isOverall) {
+        const counts = [1, 2, 3, 4, 5].map(function (score) {
+          return values.filter(function (value) { return value === score; }).length;
+        });
+        const maxCount = Math.max(1, ...counts);
+        const middleCount = maxCount > 1 ? Math.ceil(maxCount / 2) + "명" : "";
+        const average = values.length ? values.reduce(function (sum, value) { return sum + value; }, 0) / values.length : null;
+        const scoreText = average !== null ? average.toFixed(1) + " / 5" : "-";
+        const chartLabel = label + " 점수별 응답 인원: " + counts.map(function (count, index) { return (index + 1) + "점 " + count + "명"; }).join(", ");
+        const bars = counts.map(function (count) {
+          const height = count ? Math.max(5, count / maxCount * 100) : 0;
+          return '<div class="score-bar-column"><span class="score-bar-value">' + count + '명</span><span class="score-bar" style="height:' + height + '%"></span></div>';
+        }).join("");
+        return '<section class="score-result-pair' + (isOverall ? ' score-result-overall' : '') + '">' +
+          '<div class="score-result-copy"><span>' + escapeHtml(label) + '</span><strong>' + scoreText + '</strong><small>응답 수 ' + values.length + '</small></div>' +
+          '<div class="score-distribution" role="img" aria-label="' + escapeHtml(chartLabel) + '">' +
+          '<div class="score-y-axis" aria-hidden="true"><span>' + maxCount + '명</span><span>' + middleCount + '</span><span>0명</span></div>' +
+          '<div class="score-plot"><div class="score-bars">' + bars + '</div><div class="score-x-axis"><span>1점</span><span>2점</span><span>3점</span><span>4점</span><span>5점</span></div></div></div></section>';
+      }
       document.querySelector("#response-count").textContent = course.responses.length + "명";
       const scores = course.questions.filter(function (q) { return q.type === "score"; });
       const scoreValues = [];
@@ -375,16 +405,17 @@
       });
       const surveyTargetCount = activeApplicants(course).length;
       const responseRate = surveyTargetCount ? Math.round((course.responses.length / surveyTargetCount) * 100) : 0;
-      const overallAverage = scoreValues.length ? (scoreValues.reduce(function (sum, value) { return sum + value; }, 0) / scoreValues.length).toFixed(1) : "-";
+      const overallScore = scoreValues.length ? scoreValues.reduce(function (sum, value) { return sum + value; }, 0) / scoreValues.length : null;
+      const overallAverage = overallScore !== null ? overallScore.toFixed(1) : "-";
       document.querySelector("#overall-results-summary").innerHTML =
         '<div class="summary-card"><span>교육 대상</span><strong>' + surveyTargetCount + '명</strong></div>' +
         '<div class="summary-card"><span>응답 완료</span><strong>' + course.responses.length + '명</strong></div>' +
         '<div class="summary-card"><span>응답률</span><strong>' + responseRate + '%</strong></div>' +
         '<div class="summary-card"><span>전체 평균</span><strong>' + overallAverage + (scoreValues.length ? ' / 5' : '') + '</strong></div>';
+      document.querySelector("#overall-score-chart").innerHTML = scores.length ? scoreDistribution("전체 객관식 평균", scoreValues, true) : "";
       document.querySelector("#score-results").innerHTML = scores.map(function (question) {
         const values = course.responses.map(function (response) { return Number(response.answers[question.id]); }).filter(Boolean);
-        const average = values.length ? (values.reduce(function (a, b) { return a + b; }, 0) / values.length).toFixed(1) : "-";
-        return '<div class="result-row"><span>' + escapeHtml(question.text) + "</span><strong>" + average + (values.length ? " / 5" : "") + "</strong></div>";
+        return scoreDistribution(question.text, values, false);
       }).join("") || '<p class="muted">점수형 문항이 없습니다.</p>';
       const texts = course.questions.filter(function (q) { return q.type === "text"; });
       document.querySelector("#text-results").innerHTML = texts.map(function (question) {
@@ -424,14 +455,50 @@
     });
     document.querySelector("#edit-cancel").addEventListener("click", function () { document.querySelector("#edit-dialog").close(); });
     document.querySelector("#select-all").addEventListener("change", function (event) { document.querySelectorAll(".applicant-check").forEach(function (box) { box.checked = event.target.checked; }); });
-    document.querySelector("#contact-body").addEventListener("change", changeStatus);
-    document.querySelector("#attendance-body").addEventListener("change", changeStatus);
-    document.querySelector("#mark-all-sms-sent").addEventListener("click", function () {
-      const active = activeApplicants(course);
-      active.forEach(function (applicant) { applicant.smsStatus = "발송완료"; });
+
+    function syncBulkSelection(checkSelector, selectAllId, actionButtonId) {
+      const boxes = Array.from(document.querySelectorAll(checkSelector));
+      const selectedCount = boxes.filter(function (box) { return box.checked; }).length;
+      const selectAll = document.querySelector("#" + selectAllId);
+      selectAll.checked = boxes.length > 0 && selectedCount === boxes.length;
+      selectAll.indeterminate = selectedCount > 0 && selectedCount < boxes.length;
+      document.querySelector("#" + actionButtonId).disabled = selectedCount === 0;
+    }
+    function toggleBulkSelection(checkSelector, selectAllId, actionButtonId, checked) {
+      document.querySelectorAll(checkSelector).forEach(function (box) { box.checked = checked; });
+      syncBulkSelection(checkSelector, selectAllId, actionButtonId);
+    }
+    document.querySelector("#contact-select-all").addEventListener("change", function (event) {
+      toggleBulkSelection(".contact-check", "contact-select-all", "mark-selected-sms-sent", event.target.checked);
+    });
+    document.querySelector("#attendance-select-all").addEventListener("change", function (event) {
+      toggleBulkSelection(".attendance-check", "attendance-select-all", "mark-selected-attended", event.target.checked);
+    });
+    document.querySelector("#contact-body").addEventListener("change", function (event) {
+      changeStatus(event);
+      if (event.target.classList.contains("contact-check")) syncBulkSelection(".contact-check", "contact-select-all", "mark-selected-sms-sent");
+    });
+    document.querySelector("#attendance-body").addEventListener("change", function (event) {
+      changeStatus(event);
+      if (event.target.classList.contains("attendance-check")) syncBulkSelection(".attendance-check", "attendance-select-all", "mark-selected-attended");
+    });
+    document.querySelector("#mark-selected-sms-sent").addEventListener("click", function () {
+      const ids = Array.from(document.querySelectorAll(".contact-check:checked")).map(function (box) { return box.value; });
+      const selected = activeApplicants(course).filter(function (applicant) { return ids.includes(applicant.id); });
+      if (!selected.length) return;
+      selected.forEach(function (applicant) { applicant.smsStatus = "발송완료"; });
       saveCourses(courses);
       renderAll();
-      setMessage(document.querySelector("#detail-message"), active.length + "명의 문자 상태를 발송완료로 변경했습니다.", "success");
+      setMessage(document.querySelector("#detail-message"), "선택한 " + selected.length + "명의 문자 상태를 발송완료로 변경했습니다.", "success");
+    });
+    document.querySelector("#mark-selected-attended").addEventListener("click", function () {
+      const ids = Array.from(document.querySelectorAll(".attendance-check:checked")).map(function (box) { return box.value; });
+      const selected = activeApplicants(course).filter(function (applicant) { return ids.includes(applicant.id); });
+      if (!selected.length) return;
+      selected.forEach(function (applicant) { applicant.attendance = "출석"; });
+      saveCourses(courses);
+      renderAll();
+      setMessage(document.querySelector("#detail-message"), "선택한 " + selected.length + "명을 출석으로 변경했습니다.", "success");
     });
     function changeStatus(event) {
       const select = event.target; const id = select.dataset.call || select.dataset.sms || select.dataset.attendance;
@@ -510,6 +577,11 @@
         document.querySelector("#apply-message").scrollIntoView({ behavior: "smooth", block: "center" });
         return;
       }
+      if (!/^[0-9]{6}-[0-9]{7}$/.test(values.resident.trim())) {
+        setMessage(document.querySelector("#apply-message"), "주민등록번호 앞 6자리와 뒤 7자리를 모두 입력해 주세요.", "error");
+        form.elements.resident.focus();
+        return;
+      }
       const phone = form.elements.phone.value.replace(/\s/g, "");
       const duplicate = course.applicants.some(function (a) { return a.phone.replace(/-/g, "") === phone.replace(/-/g, ""); });
       if (duplicate && !duplicateConfirmed) {
@@ -538,6 +610,9 @@
       event.target.value = formatPhone(event.target.value);
       duplicateConfirmed = false;
       document.querySelector("#apply-submit").textContent = "교육 신청하기";
+    });
+    form.elements.resident.addEventListener("input", function (event) {
+      event.target.value = formatResident(event.target.value);
     });
   }
 
