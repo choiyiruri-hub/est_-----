@@ -661,7 +661,11 @@
     render();
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
+  document.addEventListener("DOMContentLoaded", async function () {
+    if (window.authReady) {
+      const isAuthenticated = await window.authReady;
+      if (!isAuthenticated) return;
+    }
     const page = document.body.dataset.page;
     if (page === "dashboard") initDashboard();
     if (page === "education-form") initEducationForm();

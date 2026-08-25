@@ -544,6 +544,7 @@ fieldset.question { display: grid; gap: 14px; }
 .login-panel .brand-mark { background: var(--primary); color: #fff; }
 .login-panel h1 { margin: 0 0 9px; font-size: 36px; letter-spacing: -0.045em; }
 .login-panel > p { margin: 0 0 32px; color: var(--text-muted); font-size: 16px; }
+.login-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .login-visual { display: grid; place-items: center end; padding: 0 0 0 32px; background: #fff; color: var(--text); }
 .login-visual-image {
   display: block;
@@ -623,6 +624,7 @@ dialog::backdrop { background: rgba(4, 3, 22, .5); }
   .score-options { grid-template-columns: repeat(5, 1fr); }
   .question-item { align-items: flex-start; flex-direction: column; }
   .login-panel { padding: 30px 22px; }
+  .login-actions { grid-template-columns: 1fr; }
   .login-panel .brand { margin-bottom: 44px; }
   .public-shell { width: min(100% - 20px, 700px); margin: 24px auto 44px; }
 }
