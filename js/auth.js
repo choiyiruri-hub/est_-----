@@ -51,11 +51,8 @@
   function setLoginBusy(isBusy, activeButton) {
     if (!loginForm) return;
     const loginButton = document.querySelector("#login-submit");
-    const signupButton = document.querySelector("#signup-submit");
     loginButton.disabled = isBusy;
-    signupButton.disabled = isBusy;
     loginButton.textContent = isBusy && activeButton === loginButton ? "로그인 중..." : "로그인";
-    signupButton.textContent = isBusy && activeButton === signupButton ? "가입 중..." : "회원가입";
   }
 
   if (!client) {
@@ -67,7 +64,6 @@
 
   if (loginForm) {
     const loginButton = document.querySelector("#login-submit");
-    const signupButton = document.querySelector("#signup-submit");
 
     const authReason = new URLSearchParams(window.location.search).get("auth");
     if (authReason === "timeout") {
@@ -104,29 +100,6 @@
       }
     });
 
-    signupButton.addEventListener("click", async function () {
-      if (!loginForm.reportValidity()) return;
-      setLoginBusy(true, signupButton);
-      const email = loginForm.elements.email.value.trim();
-      const password = loginForm.elements.password.value;
-      try {
-        const result = await withTimeout(client.auth.signUp({ email: email, password: password }));
-        if (result.error) {
-          showMessage(authErrorMessage(result.error, "회원가입"), "error");
-          setLoginBusy(false);
-          return;
-        }
-        if (result.data && result.data.session) {
-          window.location.replace("index.html");
-          return;
-        }
-        showMessage("회원가입 요청이 완료되었습니다. 이메일 인증 후 로그인해 주세요.", "success");
-        setLoginBusy(false);
-      } catch (error) {
-        showMessage(isTimeoutError(error) ? "회원가입 요청이 지연되고 있습니다. 네트워크 연결을 확인한 후 다시 시도해 주세요." : authErrorMessage(error, "회원가입"), "error");
-        setLoginBusy(false);
-      }
-    });
   }
 
   if (logoutLinks.length) {

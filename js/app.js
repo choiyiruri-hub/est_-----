@@ -402,7 +402,9 @@
       let targetId = course && course.id;
       try {
         if (course) {
-          throwIfError(await requireDb().from("courses").update(courseRow(courseValues)).eq("id", course.id));
+          const updateResult = await requireDb().from("courses").update(courseRow(courseValues)).eq("id", course.id).select("id").maybeSingle();
+          throwIfError(updateResult);
+          if (!updateResult.data) throw new Error("Course update was not permitted");
         } else {
           const inserted = throwIfError(await requireDb().from("courses").insert(courseRow(courseValues)).select("id").single());
           targetId = inserted.id;
@@ -819,8 +821,8 @@
       form.hidden = true;
       document.querySelector("#capacity-notice").hidden = true;
       setMessage(document.querySelector("#apply-message"), overCapacity
-        ? "신청이 접수되었습니다.\n현재 정원을 초과하여 교육 관리자가 참여 가능 여부를 확인한 후 별도로 연락드리겠습니다."
-        : "정상 신청으로 접수되었습니다.", overCapacity ? "warning" : "success");
+        ? "신청이 접수되었습니다.\n현재 정원을 초과하여 교육 관리자가 참여 가능 여부를 확인한 후 별도로 연락드리겠습니다.\n\n문의: 064-741-2973"
+        : "정상 신청으로 접수되었습니다.\n\n문의: 064-741-2973", overCapacity ? "warning" : "success");
     });
     form.elements.phone.addEventListener("input", function (event) {
       event.target.value = formatPhone(event.target.value);
