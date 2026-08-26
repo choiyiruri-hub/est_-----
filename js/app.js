@@ -428,7 +428,10 @@
       } catch (error) {
         console.error(error);
         submit.disabled = false;
-        setMessage(document.querySelector("#form-message"), "교육 정보를 저장하지 못했습니다. 포스터 용량을 줄인 후 다시 시도해 주세요.", "error");
+        const permissionDenied = error && (error.code === "42501" || String(error.message || "").toLowerCase().includes("row-level security"));
+        setMessage(document.querySelector("#form-message"), permissionDenied
+          ? "교육 정보를 저장할 권한이 없습니다. 데이터베이스 접근 설정을 확인해 주세요."
+          : "교육 정보를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
         return;
       }
       location.href = "education-detail.html?id=" + targetId;
