@@ -4,6 +4,30 @@
   const client = window.supabaseClient;
   const loginForm = document.querySelector("#login-form");
   const logoutLinks = Array.from(document.querySelectorAll("[data-logout]"));
+  const AUTH_TIMEOUT_MS = 10000;
+
+  function withTimeout(promise, timeoutMs) {
+    let timer;
+    const timeout = new Promise(function (_, reject) {
+      timer = window.setTimeout(function () {
+        const error = new Error("Authentication request timed out");
+        error.code = "auth_timeout";
+        reject(error);
+      }, timeoutMs || AUTH_TIMEOUT_MS);
+    });
+    return Promise.race([promise, timeout]).finally(function () {
+      window.clearTimeout(timer);
+    });
+  }
+
+  function isTimeoutError(error) {
+    return Boolean(error && error.code === "auth_timeout");
+  }
+
+  function loginRedirect(reason) {
+    const query = reason ? "?auth=" + encodeURIComponent(reason) : "";
+    window.location.replace("login.html" + query);
+  }
 
   function showMessage(text, type) {
     const message = document.querySelector("#login-message");
@@ -36,7 +60,7 @@
 
   if (!client) {
     if (loginForm) showMessage("인증 서비스를 불러오지 못했습니다. 페이지를 새로고침해 주세요.", "error");
-    if (logoutLinks.length) window.location.replace("login.html");
+    if (logoutLinks.length) loginRedirect("unavailable");
     window.authReady = Promise.resolve(false);
     return;
   }
@@ -45,9 +69,20 @@
     const loginButton = document.querySelector("#login-submit");
     const signupButton = document.querySelector("#signup-submit");
 
-    client.auth.getSession().then(function (result) {
-      if (result.data && result.data.session) window.location.replace("index.html");
-    }).catch(function () {});
+    const authReason = new URLSearchParams(window.location.search).get("auth");
+    if (authReason === "timeout") {
+      showMessage("로그인 상태 확인이 지연되어 로그인 화면으로 돌아왔습니다. 다시 로그인해 주세요.", "error");
+    } else if (authReason) {
+      showMessage("로그인이 필요하거나 세션이 만료되었습니다. 다시 로그인해 주세요.", "error");
+    } else {
+      withTimeout(client.auth.getUser()).then(function (result) {
+        if (!result.error && result.data && result.data.user) window.location.replace("index.html");
+      }).catch(function (error) {
+        if (isTimeoutError(error)) {
+          showMessage("자동 로그인 확인이 지연되고 있습니다. 이메일과 비밀번호로 로그인해 주세요.", "error");
+        }
+      });
+    }
 
     loginForm.addEventListener("submit", async function (event) {
       event.preventDefault();
@@ -56,7 +91,7 @@
       const email = loginForm.elements.email.value.trim();
       const password = loginForm.elements.password.value;
       try {
-        const result = await client.auth.signInWithPassword({ email: email, password: password });
+        const result = await withTimeout(client.auth.signInWithPassword({ email: email, password: password }));
         if (result.error) {
           showMessage(authErrorMessage(result.error, "로그인"), "error");
           setLoginBusy(false);
@@ -64,7 +99,7 @@
         }
         window.location.replace("index.html");
       } catch (error) {
-        showMessage(authErrorMessage(error, "로그인"), "error");
+        showMessage(isTimeoutError(error) ? "로그인 요청이 지연되고 있습니다. 네트워크 연결을 확인한 후 다시 시도해 주세요." : authErrorMessage(error, "로그인"), "error");
         setLoginBusy(false);
       }
     });
@@ -75,7 +110,7 @@
       const email = loginForm.elements.email.value.trim();
       const password = loginForm.elements.password.value;
       try {
-        const result = await client.auth.signUp({ email: email, password: password });
+        const result = await withTimeout(client.auth.signUp({ email: email, password: password }));
         if (result.error) {
           showMessage(authErrorMessage(result.error, "회원가입"), "error");
           setLoginBusy(false);
@@ -88,7 +123,7 @@
         showMessage("회원가입 요청이 완료되었습니다. 이메일 인증 후 로그인해 주세요.", "success");
         setLoginBusy(false);
       } catch (error) {
-        showMessage(authErrorMessage(error, "회원가입"), "error");
+        showMessage(isTimeoutError(error) ? "회원가입 요청이 지연되고 있습니다. 네트워크 연결을 확인한 후 다시 시도해 주세요." : authErrorMessage(error, "회원가입"), "error");
         setLoginBusy(false);
       }
     });
@@ -100,9 +135,9 @@
         event.preventDefault();
         link.setAttribute("aria-busy", "true");
         try {
-          const result = await client.auth.signOut({ scope: "local" });
+          const result = await withTimeout(client.auth.signOut({ scope: "local" }));
           if (result.error) throw result.error;
-          window.location.replace("login.html");
+          loginRedirect();
         } catch (error) {
           link.removeAttribute("aria-busy");
           window.alert("로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.");
@@ -112,18 +147,18 @@
 
     window.authReady = (async function () {
       try {
-        const result = await client.auth.getUser();
+        const result = await withTimeout(client.auth.getUser());
         if (result.error || !result.data || !result.data.user) throw result.error || new Error("No authenticated user");
         logoutLinks.forEach(function (link) { link.hidden = false; });
         return true;
       } catch (error) {
-        window.location.replace("login.html");
+        loginRedirect(isTimeoutError(error) ? "timeout" : "required");
         return false;
       }
     })();
 
     client.auth.onAuthStateChange(function (event) {
-      if (event === "SIGNED_OUT") window.location.replace("login.html");
+      if (event === "SIGNED_OUT") loginRedirect("required");
     });
   }
 })();
