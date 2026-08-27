@@ -286,6 +286,7 @@ table { width: 100%; border-collapse: collapse; background: #fff; white-space: n
 th, td { padding: 14px 15px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
 th { background: var(--primary-soft); color: var(--primary); font-size: 13px; font-weight: 800; letter-spacing: .01em; }
 .table-heading-action { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 160px; }
+.contact-note-input { min-width: 200px; }
 .selection-cell { width: 48px; padding-right: 8px; padding-left: 8px; text-align: center; }
 .table-select { display: inline-block; width: 17px; height: 17px; margin: 0; vertical-align: middle; cursor: pointer; }
 tbody tr:last-child td { border-bottom: 0; }

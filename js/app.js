@@ -100,6 +100,7 @@
           callStatus: applicant.call_status,
           smsStatus: applicant.sms_status,
           attendance: applicant.attendance_status,
+          contactNote: applicant.contact_note || "",
           surveyCompleted: responses.some(function (response) {
             return response.applicantId === applicant.id || (!response.applicantId && response.name === applicant.name);
           })
@@ -494,7 +495,8 @@
     function contactRow(applicant) {
       return '<tr><td><input type="checkbox" class="contact-check" value="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 선택"></td><td>' + escapeHtml(applicant.name) + "</td><td>" + escapeHtml(applicant.phone) + "</td>" +
         '<td><select data-call="' + applicant.id + '"><option>미통화</option><option>부재</option><option>통화완료</option></select></td>' +
-        '<td><select data-sms="' + applicant.id + '"><option>미발송</option><option>발송완료</option></select></td></tr>';
+        '<td><select data-sms="' + applicant.id + '"><option>미발송</option><option>발송완료</option></select></td>' +
+        '<td><input class="contact-note-input" data-contact-note="' + applicant.id + '" value="' + escapeHtml(applicant.contactNote || "") + '" maxlength="200" placeholder="메모 입력" aria-label="' + escapeHtml(applicant.name) + ' 비고"></td></tr>';
     }
     function attendanceRow(applicant) {
       return '<tr><td><input type="checkbox" class="attendance-check" value="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 선택"></td><td>' + escapeHtml(applicant.name) + "</td><td>" + escapeHtml(applicant.organization) + "</td>" +
@@ -507,7 +509,7 @@
       document.querySelector("#over-count").classList.toggle("text-danger", count.over > 0);
       document.querySelector("#applicant-body").innerHTML = course.applicants.map(applicantRow).join("") || '<tr><td colspan="15" class="empty-cell">신청자가 없습니다.</td></tr>';
       const active = activeApplicants(course);
-      document.querySelector("#contact-body").innerHTML = active.map(contactRow).join("") || '<tr><td colspan="5" class="empty-cell">연락 대상이 없습니다.</td></tr>';
+      document.querySelector("#contact-body").innerHTML = active.map(contactRow).join("") || '<tr><td colspan="6" class="empty-cell">연락 대상이 없습니다.</td></tr>';
       document.querySelector("#attendance-body").innerHTML = active.map(attendanceRow).join("") || '<tr><td colspan="4" class="empty-cell">출석 대상이 없습니다.</td></tr>';
       ["contact-select-all", "attendance-select-all"].forEach(function (id) {
         const box = document.querySelector("#" + id);
@@ -661,6 +663,7 @@
     });
     document.querySelector("#contact-body").addEventListener("change", function (event) {
       changeStatus(event);
+      saveContactNote(event);
       if (event.target.classList.contains("contact-check")) syncBulkSelection(".contact-check", "contact-select-all", "mark-selected-sms-sent");
     });
     document.querySelector("#attendance-body").addEventListener("change", function (event) {
@@ -708,6 +711,22 @@
       if (select.dataset.sms) item.smsStatus = select.value;
       if (select.dataset.attendance) item.attendance = select.value;
       updateSummaries();
+    }
+    async function saveContactNote(event) {
+      const input = event.target;
+      const id = input.dataset.contactNote;
+      if (!id) return;
+      const item = course.applicants.find(function (applicant) { return applicant.id === id; });
+      const previous = item.contactNote || "";
+      const note = input.value.trim();
+      const result = await requireDb().from("applications").update({ contact_note: note }).eq("id", id);
+      if (result.error) {
+        input.value = previous;
+        setMessage(document.querySelector("#detail-message"), "비고를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
+        return;
+      }
+      item.contactNote = note;
+      input.value = note;
     }
     function download(applicants) {
       if (!applicants.length) { setMessage(document.querySelector("#detail-message"), "다운로드할 신청자를 선택해 주세요.", "error"); return; }
