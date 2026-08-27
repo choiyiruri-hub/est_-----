@@ -541,7 +541,7 @@
         const scoreText = average !== null ? average.toFixed(1) + " / 5" : "-";
         const chartLabel = label + " 점수별 응답 인원: " + counts.map(function (count, index) { return (index + 1) + "점 " + count + "명"; }).join(", ");
         const bars = counts.map(function (count) {
-          const height = count ? Math.max(5, count / maxCount * 100) : 0;
+          const height = count ? (isOverall ? count / maxCount * 100 : Math.max(5, count / maxCount * 100)) : 0;
           return '<div class="score-bar-column"><span class="score-bar-value">' + count + '명</span><span class="score-bar" style="height:' + height + '%"></span></div>';
         }).join("");
         return '<section class="score-result-pair' + (isOverall ? ' score-result-overall' : '') + '">' +
@@ -567,7 +567,7 @@
         const values = scores.map(function (question) { return Number(response.answers[question.id]); }).filter(Boolean);
         if (!values.length) return null;
         const average = values.reduce(function (sum, value) { return sum + value; }, 0) / values.length;
-        return Math.min(5, Math.max(1, Math.round(average)));
+        return Math.min(5, Math.max(1, Math.floor(average)));
       }).filter(function (value) { return value !== null; });
       document.querySelector("#overall-results-summary").innerHTML =
         '<div class="summary-card"><span>교육 대상</span><strong>' + surveyTargetCount + '명</strong></div>' +

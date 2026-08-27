@@ -395,6 +395,9 @@ tbody tr:hover { background: var(--primary-soft); }
 .score-result-pair { display: grid; grid-template-columns: minmax(150px, .8fr) minmax(270px, 1.2fr); gap: 20px; align-items: center; padding: 18px 0; }
 .score-result-pair + .score-result-pair { border-top: 1px solid var(--line); }
 .score-result-overall { margin-bottom: 10px; padding: 16px; border: 1px solid #efd49c; border-radius: 10px; background: var(--secondary-soft); }
+.score-result-overall .score-distribution { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.score-result-overall .score-y-axis { display: none; }
+.score-result-overall .score-bars { border-left: 0; }
 .score-result-copy { display: grid; gap: 5px; min-width: 0; }
 .score-result-copy span { color: var(--text); font-weight: 700; white-space: normal; }
 .score-result-copy strong { color: var(--primary); font-size: 20px; }
