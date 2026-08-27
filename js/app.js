@@ -531,13 +531,13 @@
       document.querySelector("#survey-summary").innerHTML = '<div class="summary-card"><span>응답완료</span><strong>' + completed + '명</strong></div><div class="summary-card"><span>미응답</span><strong>' + Math.max(0, active.length - completed) + "명</strong></div>";
     }
     function renderSurveyResults() {
-      function scoreDistribution(label, values, isOverall) {
+      function scoreDistribution(label, values, isOverall, averageOverride) {
         const counts = [1, 2, 3, 4, 5].map(function (score) {
           return values.filter(function (value) { return value === score; }).length;
         });
         const maxCount = Math.max(1, ...counts);
         const middleCount = maxCount > 1 ? Math.ceil(maxCount / 2) + "명" : "";
-        const average = values.length ? values.reduce(function (sum, value) { return sum + value; }, 0) / values.length : null;
+        const average = averageOverride !== undefined ? averageOverride : (values.length ? values.reduce(function (sum, value) { return sum + value; }, 0) / values.length : null);
         const scoreText = average !== null ? average.toFixed(1) + " / 5" : "-";
         const chartLabel = label + " 점수별 응답 인원: " + counts.map(function (count, index) { return (index + 1) + "점 " + count + "명"; }).join(", ");
         const bars = counts.map(function (count) {
@@ -563,12 +563,18 @@
       const responseRate = surveyTargetCount ? Math.round((course.responses.length / surveyTargetCount) * 100) : 0;
       const overallScore = scoreValues.length ? scoreValues.reduce(function (sum, value) { return sum + value; }, 0) / scoreValues.length : null;
       const overallAverage = overallScore !== null ? overallScore.toFixed(1) : "-";
+      const respondentScoreBuckets = course.responses.map(function (response) {
+        const values = scores.map(function (question) { return Number(response.answers[question.id]); }).filter(Boolean);
+        if (!values.length) return null;
+        const average = values.reduce(function (sum, value) { return sum + value; }, 0) / values.length;
+        return Math.min(5, Math.max(1, Math.round(average)));
+      }).filter(function (value) { return value !== null; });
       document.querySelector("#overall-results-summary").innerHTML =
         '<div class="summary-card"><span>교육 대상</span><strong>' + surveyTargetCount + '명</strong></div>' +
         '<div class="summary-card"><span>응답 완료</span><strong>' + course.responses.length + '명</strong></div>' +
         '<div class="summary-card"><span>응답률</span><strong>' + responseRate + '%</strong></div>' +
         '<div class="summary-card"><span>전체 평균</span><strong>' + overallAverage + (scoreValues.length ? ' / 5' : '') + '</strong></div>';
-      document.querySelector("#overall-score-chart").innerHTML = scores.length ? scoreDistribution("전체 객관식 평균", scoreValues, true) : "";
+      document.querySelector("#overall-score-chart").innerHTML = scores.length ? scoreDistribution("전체 객관식 평균", respondentScoreBuckets, true, overallScore) : "";
       document.querySelector("#score-results").innerHTML = scores.map(function (question) {
         const values = course.responses.map(function (response) { return Number(response.answers[question.id]); }).filter(Boolean);
         return scoreDistribution(question.text, values, false);
