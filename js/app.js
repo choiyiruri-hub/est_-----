@@ -545,7 +545,7 @@
           return '<div class="score-bar-column"><span class="score-bar-value">' + count + '명</span><span class="score-bar" style="height:' + height + '%"></span></div>';
         }).join("");
         return '<section class="score-result-pair' + (isOverall ? ' score-result-overall' : '') + '">' +
-          '<div class="score-result-copy"><span>' + escapeHtml(label) + '</span><strong>' + scoreText + '</strong><small>응답 수 ' + values.length + '</small></div>' +
+          '<div class="score-result-copy"><span>' + escapeHtml(label) + '</span><strong>' + scoreText + '</strong><small>응답 수 ' + (isOverall ? course.responses.length : values.length) + '</small></div>' +
           '<div class="score-distribution" role="img" aria-label="' + escapeHtml(chartLabel) + '">' +
           '<div class="score-y-axis" aria-hidden="true"><span>' + maxCount + '명</span><span>' + middleCount + '</span><span>0명</span></div>' +
           '<div class="score-plot"><div class="score-bars">' + bars + '</div><div class="score-x-axis"><span>1점</span><span>2점</span><span>3점</span><span>4점</span><span>5점</span></div></div></div></section>';
