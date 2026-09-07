@@ -15,6 +15,51 @@
     return String(value || "").slice(0, 5);
   }
 
+  const DEFAULT_QUESTION_GROUP = "기본 문항";
+  const PRESET_QUESTION_GROUPS = [
+    "교육 내용 만족도",
+    "강사 및 운영 만족도",
+    "전반적 만족도"
+  ];
+
+  function questionFromRow(question) {
+    return {
+      id: question.id,
+      type: question.question_type,
+      text: question.question_text,
+      displayOrder: question.display_order,
+      groupName: String(question.group_name || DEFAULT_QUESTION_GROUP).trim() || DEFAULT_QUESTION_GROUP,
+      groupOrder: Number(question.group_order) || 1
+    };
+  }
+
+  function groupQuestions(questions) {
+    const groups = [];
+    questions.forEach(function (question) {
+      const name = String(question.groupName || DEFAULT_QUESTION_GROUP).trim() || DEFAULT_QUESTION_GROUP;
+      let group = groups.find(function (item) { return item.name === name; });
+      if (!group) {
+        group = { name: name, order: Number(question.groupOrder) || groups.length + 1, questions: [] };
+        groups.push(group);
+      }
+      group.questions.push(question);
+    });
+    return groups.sort(function (a, b) { return a.order - b.order; });
+  }
+
+  function normalizeQuestionOrder(questions) {
+    const ordered = [];
+    groupQuestions(questions).forEach(function (group, groupIndex) {
+      group.questions.forEach(function (question) {
+        question.groupName = group.name;
+        question.groupOrder = groupIndex + 1;
+        question.displayOrder = ordered.length + 1;
+        ordered.push(question);
+      });
+    });
+    return ordered;
+  }
+
   function courseRow(course) {
     return {
       name: course.name,
@@ -52,7 +97,7 @@
   async function getCourses(includePrivate) {
     const client = requireDb();
     const courseResult = await client.from("courses").select("*").order("course_date", { ascending: false });
-    const questionResult = await client.from("course_survey_questions").select("*").order("display_order", { ascending: true });
+    const questionResult = await client.from("course_survey_questions").select("*").order("group_order", { ascending: true }).order("display_order", { ascending: true });
     const courseRows = throwIfError(courseResult);
     const questionRows = throwIfError(questionResult);
     let applicationRows = [];
@@ -71,9 +116,7 @@
     }
 
     return courseRows.map(function (row) {
-      const questions = questionRows.filter(function (question) { return question.course_id === row.id; }).map(function (question) {
-        return { id: question.id, type: question.question_type, text: question.question_text, displayOrder: question.display_order };
-      });
+      const questions = questionRows.filter(function (question) { return question.course_id === row.id; }).map(questionFromRow);
       const responses = responseRows.filter(function (response) { return response.course_id === row.id; }).map(function (response) {
         const answers = {};
         answerRows.filter(function (answer) { return answer.response_id === response.id; }).forEach(function (answer) {
@@ -126,10 +169,19 @@
   }
 
   async function getQuestions() {
-    const result = await requireDb().from("survey_question_templates").select("*").order("display_order", { ascending: true });
-    return throwIfError(result).map(function (question) {
-      return { id: question.id, type: question.question_type, text: question.question_text, displayOrder: question.display_order };
+    const result = await requireDb().from("survey_question_templates").select("*").order("group_order", { ascending: true }).order("display_order", { ascending: true });
+    return normalizeQuestionOrder(throwIfError(result).map(questionFromRow));
+  }
+
+  async function getQuestionGroups() {
+    const result = await requireDb().from("survey_question_groups").select("*").order("display_order", { ascending: true });
+    return throwIfError(result).map(function (group) {
+      return { id: group.id, name: group.name, displayOrder: group.display_order };
     });
+  }
+
+  function normalizedGroupName(value) {
+    return String(value || "").trim().toLocaleLowerCase("ko-KR");
   }
 
   function param(name) { return new URLSearchParams(location.search).get(name); }
@@ -416,7 +468,9 @@
                 course_id: targetId,
                 question_type: question.type,
                 question_text: question.text,
-                display_order: index + 1
+                display_order: question.displayOrder || index + 1,
+                group_name: question.groupName,
+                group_order: question.groupOrder
               };
             });
             const questionResult = await requireDb().from("course_survey_questions").insert(questionRows);
@@ -882,9 +936,14 @@
       return;
     }
     document.querySelector("#survey-course-title").textContent = course.name;
-    document.querySelector("#survey-question-list").innerHTML = course.questions.map(function (q, index) {
-      if (q.type === "score") return '<fieldset class="question"><legend>' + (index + 1) + ". " + escapeHtml(q.text) + '</legend><div class="score-options">' + [1, 2, 3, 4, 5].map(function (score) { return '<label><input type="radio" name="' + q.id + '" value="' + score + '" required><span>' + score + "점</span></label>"; }).join("") + "</div></fieldset>";
-      return '<label class="field question"><span>' + (index + 1) + ". " + escapeHtml(q.text) + '</span><textarea name="' + q.id + '" rows="4" required></textarea></label>';
+    let questionNumber = 0;
+    document.querySelector("#survey-question-list").innerHTML = groupQuestions(course.questions).map(function (group, groupIndex) {
+      const questionsHtml = group.questions.map(function (q) {
+        questionNumber += 1;
+        if (q.type === "score") return '<fieldset class="question"><legend>' + questionNumber + ". " + escapeHtml(q.text) + '</legend><div class="score-options">' + [1, 2, 3, 4, 5].map(function (score) { return '<label><input type="radio" name="' + q.id + '" value="' + score + '" required><span>' + score + "점</span></label>"; }).join("") + "</div></fieldset>";
+        return '<label class="field question"><span>' + questionNumber + ". " + escapeHtml(q.text) + '</span><textarea name="' + q.id + '" rows="4" required></textarea></label>';
+      }).join("");
+      return '<section class="survey-question-group" aria-labelledby="survey-group-' + (groupIndex + 1) + '"><h2 id="survey-group-' + (groupIndex + 1) + '">' + escapeHtml(group.name) + '</h2><div class="survey-group-questions">' + questionsHtml + "</div></section>";
     }).join("");
     if (!course.questions.length) {
       form.hidden = true;
@@ -932,41 +991,186 @@
 
   async function initSurveySettings() {
     let questions = [];
-    const list = document.querySelector("#settings-list"); const dialog = document.querySelector("#question-dialog"); const form = document.querySelector("#question-form");
+    let groups = [];
+    let activeGroupName = "";
+    const list = document.querySelector("#settings-list");
+    const questionDialog = document.querySelector("#question-dialog");
+    const questionForm = document.querySelector("#question-form");
+    const groupDialog = document.querySelector("#group-dialog");
+    const groupForm = document.querySelector("#group-form");
     try {
-      questions = await getQuestions();
+      const results = await Promise.all([getQuestions(), getQuestionGroups()]);
+      questions = results[0];
+      groups = results[1];
+
+      groupQuestions(questions).forEach(function (questionGroup) {
+        const exists = groups.some(function (group) { return normalizedGroupName(group.name) === normalizedGroupName(questionGroup.name); });
+        if (!exists) groups.push({ id: null, name: questionGroup.name, displayOrder: groups.length + 1 });
+      });
+      PRESET_QUESTION_GROUPS.forEach(function (name) {
+        const exists = groups.some(function (group) { return normalizedGroupName(group.name) === normalizedGroupName(name); });
+        if (!exists) groups.push({ id: null, name: name, displayOrder: groups.length + 1 });
+      });
     } catch (error) {
       console.error(error);
       setMessage(document.querySelector("#settings-message"), "만족도 문항을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
       document.querySelector("#save-questions").disabled = true;
     }
-    function render() {
-      list.innerHTML = questions.map(function (q, index) { return '<li class="question-item"><div><span class="question-number">' + (index + 1) + '</span><div><strong>' + escapeHtml(q.text) + '</strong><span class="type-label">' + (q.type === "score" ? "점수형 · 1~5점" : "주관식") + '</span></div></div><div class="inline-actions"><button class="button button-small button-ghost" data-move="up" data-index="' + index + '" ' + (index === 0 ? "disabled" : "") + '>위로</button><button class="button button-small button-ghost" data-move="down" data-index="' + index + '" ' + (index === questions.length - 1 ? "disabled" : "") + '>아래로</button><button class="button button-small button-ghost" data-edit-question="' + index + '">수정</button><button class="button button-small button-danger" data-delete-question="' + index + '">삭제</button></div></li>'; }).join("") || '<li class="empty-cell">문항이 없습니다. 문항을 추가해 주세요.</li>';
+
+    function normalizeSettingsOrder() {
+      const orderedQuestions = [];
+      groups.forEach(function (group, groupIndex) {
+        group.displayOrder = groupIndex + 1;
+        questions.filter(function (question) {
+          return normalizedGroupName(question.groupName) === normalizedGroupName(group.name);
+        }).forEach(function (question) {
+          question.groupName = group.name;
+          question.groupOrder = group.displayOrder;
+          question.displayOrder = orderedQuestions.length + 1;
+          orderedQuestions.push(question);
+        });
+      });
+      questions = orderedQuestions;
     }
+
+    function render() {
+      normalizeSettingsOrder();
+      let questionNumber = 0;
+      list.innerHTML = groups.map(function (group, groupIndex) {
+        const groupItems = questions.filter(function (question) { return question.groupName === group.name; });
+        const items = groupItems.map(function (question, questionIndex) {
+          const index = questions.indexOf(question);
+          questionNumber += 1;
+          return '<li class="question-item"><div><span class="question-number">' + questionNumber + '</span><div><strong>' + escapeHtml(question.text) + '</strong><span class="type-label">' + (question.type === "score" ? "점수형 · 1~5점" : "주관식") + '</span></div></div><div class="inline-actions"><button class="button button-small button-ghost" data-move="up" data-index="' + index + '" ' + (questionIndex === 0 ? "disabled" : "") + '>위로</button><button class="button button-small button-ghost" data-move="down" data-index="' + index + '" ' + (questionIndex === groupItems.length - 1 ? "disabled" : "") + '>아래로</button><button class="button button-small button-ghost" data-edit-question="' + index + '">수정</button><button class="button button-small button-danger" data-delete-question="' + index + '">삭제</button></div></li>';
+        }).join("");
+        const questionList = items || '<li class="empty-cell question-group-empty">등록된 문항이 없습니다.</li>';
+        return '<section class="question-group-card"><div class="question-group-header"><div><span class="group-order-label">주제 ' + (groupIndex + 1) + '</span><h3>' + escapeHtml(group.name) + '</h3><span>' + groupItems.length + '개 문항</span></div><div class="inline-actions"><button class="button button-small" data-add-question="' + groupIndex + '">문항 추가</button><button class="button button-small button-ghost" data-move-group="up" data-group-index="' + groupIndex + '" ' + (groupIndex === 0 ? "disabled" : "") + '>주제 위로</button><button class="button button-small button-ghost" data-move-group="down" data-group-index="' + groupIndex + '" ' + (groupIndex === groups.length - 1 ? "disabled" : "") + '>주제 아래로</button></div></div><ol class="question-list">' + questionList + "</ol></section>";
+      }).join("") || '<div class="empty-cell">등록된 주제가 없습니다. 주제를 추가해 주세요.</div>';
+    }
+
     const originalIds = new Set(questions.map(function (question) { return question.id; }));
-    document.querySelector("#add-question").addEventListener("click", function () { form.reset(); form.elements.index.value = ""; document.querySelector("#question-dialog-title").textContent = "문항 추가"; dialog.showModal(); });
-    document.querySelector("#question-cancel").addEventListener("click", function () { dialog.close(); });
-    list.addEventListener("click", function (event) {
-      const edit = event.target.dataset.editQuestion; const remove = event.target.dataset.deleteQuestion; const move = event.target.dataset.move; const index = Number(event.target.dataset.index);
-      if (edit !== undefined) { const q = questions[Number(edit)]; form.elements.index.value = edit; form.elements.type.value = q.type; form.elements.text.value = q.text; document.querySelector("#question-dialog-title").textContent = "문항 수정"; dialog.showModal(); }
-      if (remove !== undefined && confirm("이 문항을 삭제할까요?")) { questions.splice(Number(remove), 1); render(); }
-      if (move) { const target = move === "up" ? index - 1 : index + 1; const temp = questions[index]; questions[index] = questions[target]; questions[target] = temp; render(); }
+    document.querySelector("#add-group").addEventListener("click", function () {
+      groupForm.reset();
+      groupForm.elements.name.setCustomValidity("");
+      groupDialog.showModal();
     });
-    form.addEventListener("submit", function (event) { event.preventDefault(); const index = form.elements.index.value; const item = { id: index === "" ? null : questions[Number(index)].id, type: form.elements.type.value, text: form.elements.text.value.trim() }; if (index === "") questions.push(item); else questions[Number(index)] = item; dialog.close(); render(); });
+    document.querySelector("#group-cancel").addEventListener("click", function () { groupDialog.close(); });
+    groupForm.elements.name.addEventListener("input", function () { groupForm.elements.name.setCustomValidity(""); });
+    groupForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      const name = groupForm.elements.name.value.trim();
+      const duplicate = groups.some(function (group) { return normalizedGroupName(group.name) === normalizedGroupName(name); });
+      if (duplicate) {
+        groupForm.elements.name.setCustomValidity("같은 이름의 주제가 이미 있습니다.");
+        groupForm.elements.name.reportValidity();
+        return;
+      }
+      groups.push({ id: null, name: name, displayOrder: groups.length + 1 });
+      groupDialog.close();
+      render();
+    });
+
+    document.querySelector("#question-cancel").addEventListener("click", function () { questionDialog.close(); });
+    list.addEventListener("click", function (event) {
+      const add = event.target.dataset.addQuestion;
+      const edit = event.target.dataset.editQuestion;
+      const remove = event.target.dataset.deleteQuestion;
+      const move = event.target.dataset.move;
+      const moveGroup = event.target.dataset.moveGroup;
+      const index = Number(event.target.dataset.index);
+      if (add !== undefined) {
+        const group = groups[Number(add)];
+        activeGroupName = group.name;
+        questionForm.reset();
+        questionForm.elements.index.value = "";
+        document.querySelector("#question-dialog-title").textContent = "문항 추가";
+        document.querySelector("#question-dialog-group").textContent = "주제: " + group.name;
+        questionDialog.showModal();
+      }
+      if (edit !== undefined) {
+        const question = questions[Number(edit)];
+        activeGroupName = question.groupName;
+        questionForm.elements.index.value = edit;
+        questionForm.elements.type.value = question.type;
+        questionForm.elements.text.value = question.text;
+        document.querySelector("#question-dialog-title").textContent = "문항 수정";
+        document.querySelector("#question-dialog-group").textContent = "주제: " + question.groupName;
+        questionDialog.showModal();
+      }
+      if (remove !== undefined && confirm("이 문항을 삭제할까요?")) { questions.splice(Number(remove), 1); render(); }
+      if (move) {
+        const groupItems = questions.filter(function (question) { return question.groupName === questions[index].groupName; });
+        const position = groupItems.indexOf(questions[index]);
+        const targetQuestion = groupItems[move === "up" ? position - 1 : position + 1];
+        const targetIndex = questions.indexOf(targetQuestion);
+        if (targetQuestion) {
+          const temporary = questions[index];
+          questions[index] = questions[targetIndex];
+          questions[targetIndex] = temporary;
+          render();
+        }
+      }
+      if (moveGroup) {
+        const groupIndex = Number(event.target.dataset.groupIndex);
+        const targetIndex = moveGroup === "up" ? groupIndex - 1 : groupIndex + 1;
+        if (groups[targetIndex]) {
+          const temporary = groups[groupIndex];
+          groups[groupIndex] = groups[targetIndex];
+          groups[targetIndex] = temporary;
+          render();
+        }
+      }
+    });
+    questionForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      const indexValue = questionForm.elements.index.value;
+      const index = Number(indexValue);
+      const previous = indexValue === "" ? null : questions[index];
+      const item = {
+        id: previous ? previous.id : null,
+        type: questionForm.elements.type.value,
+        text: questionForm.elements.text.value.trim(),
+        groupName: activeGroupName,
+        groupOrder: groups.findIndex(function (group) { return group.name === activeGroupName; }) + 1
+      };
+      if (previous) {
+        questions[index] = item;
+      } else {
+        const lastGroupIndex = questions.reduce(function (lastIndex, question, questionIndex) {
+          return question.groupName === activeGroupName ? questionIndex : lastIndex;
+        }, -1);
+        if (lastGroupIndex >= 0) questions.splice(lastGroupIndex + 1, 0, item);
+        else questions.push(item);
+      }
+      questionDialog.close();
+      render();
+    });
     document.querySelector("#save-questions").addEventListener("click", async function () {
       const saveButton = document.querySelector("#save-questions");
       saveButton.disabled = true;
       const currentIds = new Set(questions.filter(function (question) { return question.id; }).map(function (question) { return question.id; }));
       const removedIds = Array.from(originalIds).filter(function (id) { return !currentIds.has(id); });
       try {
+        normalizeSettingsOrder();
+        for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
+          const group = groups[groupIndex];
+          const values = { name: group.name, display_order: group.displayOrder };
+          if (group.id) {
+            throwIfError(await requireDb().from("survey_question_groups").update(values).eq("id", group.id));
+          } else {
+            const insertedGroup = throwIfError(await requireDb().from("survey_question_groups").insert(values).select("id").single());
+            group.id = insertedGroup.id;
+          }
+        }
         if (removedIds.length) throwIfError(await requireDb().from("survey_question_templates").delete().in("id", removedIds));
         for (let index = 0; index < questions.length; index += 1) {
           const question = questions[index];
-          const values = { question_type: question.type, question_text: question.text, display_order: index + 1 };
+          const values = { question_type: question.type, question_text: question.text, display_order: question.displayOrder, group_name: question.groupName, group_order: question.groupOrder };
           if (question.id) {
             throwIfError(await requireDb().from("survey_question_templates").update(values).eq("id", question.id));
           } else {
-            throwIfError(await requireDb().from("survey_question_templates").insert(values));
+            const insertedQuestion = throwIfError(await requireDb().from("survey_question_templates").insert(values).select("id").single());
+            question.id = insertedQuestion.id;
           }
         }
       } catch (error) {

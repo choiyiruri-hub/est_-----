@@ -10,10 +10,10 @@
   }
 
   window.DEFAULT_SURVEY_QUESTIONS = [
-    { id: "q1", type: "score", text: "교육 내용은 전반적으로 만족스러웠나요?" },
-    { id: "q2", type: "score", text: "교육 내용이 실무에 도움이 될 것 같나요?" },
-    { id: "q3", type: "text", text: "교육에서 가장 도움이 된 점을 알려주세요." },
-    { id: "q4", type: "text", text: "개선이 필요한 점이 있다면 알려주세요." }
+    { id: "q1", type: "score", text: "교육 내용은 전반적으로 만족스러웠나요?", groupName: "기본 문항", groupOrder: 1, displayOrder: 1 },
+    { id: "q2", type: "score", text: "교육 내용이 실무에 도움이 될 것 같나요?", groupName: "기본 문항", groupOrder: 1, displayOrder: 2 },
+    { id: "q3", type: "text", text: "교육에서 가장 도움이 된 점을 알려주세요.", groupName: "기본 문항", groupOrder: 1, displayOrder: 3 },
+    { id: "q4", type: "text", text: "개선이 필요한 점이 있다면 알려주세요.", groupName: "기본 문항", groupOrder: 1, displayOrder: 4 }
   ];
 
   window.createDefaultCourses = function () {

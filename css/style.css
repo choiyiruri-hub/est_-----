@@ -566,7 +566,14 @@ fieldset.question { display: grid; gap: 14px; }
 .visual-card strong { display: block; margin-bottom: 4px; color: #fff; }
 .visual-card span { color: #d9e8f5; font-size: 13px; }
 
-.question-list { display: grid; gap: 11px; padding: 0; list-style: none; }
+.question-groups { display: grid; gap: 18px; }
+.question-group-card { overflow: hidden; border: 1px solid var(--line); border-radius: 13px; background: var(--background); }
+.question-group-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 20px; border-bottom: 1px solid var(--line); background: var(--primary-soft); }
+.question-group-header h3 { margin: 2px 0; color: var(--primary); font-size: 20px; letter-spacing: -0.025em; }
+.question-group-header > div:first-child > span:last-child { color: var(--text-muted); font-size: 13px; }
+.group-order-label { color: var(--primary); font-size: 12px; font-weight: 800; }
+.question-list { display: grid; gap: 10px; margin: 0; padding: 14px; list-style: none; }
+.question-group-empty { padding: 28px 16px; }
 .question-item {
   display: flex;
   align-items: center;
@@ -582,10 +589,15 @@ fieldset.question { display: grid; gap: 14px; }
 .question-number { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; border-radius: 9px; background: var(--primary-soft); color: var(--primary); font-weight: 800; }
 .type-label { display: block; margin-top: 3px; color: var(--text-muted); font-size: 13px; }
 
+.survey-question-group { display: grid; gap: 14px; padding: 20px; border: 1px solid var(--line); border-radius: 13px; background: var(--background); }
+.survey-question-group > h2 { margin: 0; color: var(--primary); font-size: 22px; letter-spacing: -0.03em; }
+.survey-group-questions { display: grid; gap: 11px; }
+
 dialog { width: min(560px, calc(100% - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 15px; box-shadow: 0 20px 56px rgba(4, 3, 22, .2); }
 dialog::backdrop { background: rgba(4, 3, 22, .5); }
 .dialog-content { padding: 26px; }
 .dialog-content h2 { margin: 0 0 21px; color: var(--primary); }
+.dialog-context { margin: -10px 0 20px; padding: 10px 12px; border-radius: 8px; background: var(--primary-soft); color: var(--primary); font-weight: 750; }
 
 @media (max-width: 900px) {
   .login-page { grid-template-columns: 1fr; }
@@ -627,6 +639,10 @@ dialog::backdrop { background: rgba(4, 3, 22, .5); }
   .form-actions .button { flex: 1; }
   .score-options { grid-template-columns: repeat(5, 1fr); }
   .question-item { align-items: flex-start; flex-direction: column; }
+  .question-group-header { align-items: flex-start; flex-direction: column; }
+  .question-group-header .inline-actions { width: 100%; }
+  .question-group-header .inline-actions .button { flex: 1; }
+  .survey-question-group { padding: 16px; }
   .login-panel { padding: 30px 22px; }
   .login-actions { grid-template-columns: 1fr; }
   .login-panel .brand { margin-bottom: 44px; }
