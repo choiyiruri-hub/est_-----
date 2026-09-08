@@ -8,10 +8,13 @@
   <main class="public-shell">
     <a class="brand public-brand" href="login.html"><span class="brand-mark"><img src="assets/images/K-HP 로고만.png" alt=""></span><span>교육 운영 관리</span></a>
     <section class="public-card">
-      <h1 id="survey-course-title" class="public-title">만족도 조사</h1><p class="public-subtitle">교육에 참여해 주셔서 감사합니다. 응답은 최초 1회만 가능합니다.</p>
+      <h1 id="survey-course-title" class="public-title">만족도 조사</h1><p class="public-subtitle">교육에 참여해 주셔서 감사합니다. 응답은 익명으로 저장됩니다.</p>
       <div id="survey-message" role="alert" hidden></div>
       <form id="survey-form" class="stack">
-        <label class="field"><span>이름 <b class="required">*</b></span><input name="name" required autocomplete="name" placeholder="교육 신청 시 입력한 이름"></label>
+        <div class="form-grid survey-demographics">
+          <label class="field"><span>성별 <b class="required">*</b></span><select name="gender" required><option value="">선택해 주세요</option><option value="남성">남성</option><option value="여성">여성</option></select></label>
+          <label class="field"><span>나이 <b class="required">*</b></span><input type="number" name="age" required min="1" max="120" step="1" inputmode="numeric" placeholder="1~120"></label>
+        </div>
         <div id="survey-question-list" class="stack"></div>
         <button class="button" type="submit">만족도 조사 제출</button>
       </form>

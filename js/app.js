@@ -122,7 +122,9 @@
         answerRows.filter(function (answer) { return answer.response_id === response.id; }).forEach(function (answer) {
           answers[answer.question_id] = answer.score_value == null ? answer.text_value : answer.score_value;
         });
-        return { id: response.id, applicantId: response.applicant_id, name: response.respondent_name, answers: answers };
+        return { id: response.id, gender: response.gender || null, age: response.age == null ? null : Number(response.age), createdAt: response.created_at || "", answers: answers };
+      }).sort(function (a, b) {
+        return String(a.createdAt || a.id).localeCompare(String(b.createdAt || b.id));
       });
       const applicants = applicationRows.filter(function (applicant) { return applicant.course_id === row.id; }).map(function (applicant) {
         return {
@@ -143,10 +145,7 @@
           callStatus: applicant.call_status,
           smsStatus: applicant.sms_status,
           attendance: applicant.attendance_status,
-          contactNote: applicant.contact_note || "",
-          surveyCompleted: responses.some(function (response) {
-            return response.applicantId === applicant.id || (!response.applicantId && response.name === applicant.name);
-          })
+          contactNote: applicant.contact_note || ""
         };
       });
       return {
@@ -538,7 +537,7 @@
     });
 
     function applicantRow(applicant, index) {
-      const surveyState = applicant.surveyCompleted ? "응답완료" : "미응답";
+      const surveyState = "익명 설문";
       return '<tr class="' + (applicant.status === "취소" ? "row-cancelled" : "") + '">' +
         '<td><input type="checkbox" class="applicant-check" value="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 선택"></td>' +
         '<td><span class="applicant-number">' + (index + 1) + '.</span><strong>' + escapeHtml(applicant.name) + "</strong> " + (applicant.duplicate ? badge("중복 신청") : "") + "</td>" +
@@ -585,8 +584,7 @@
       const active = activeApplicants(course);
       document.querySelector("#contact-summary").innerHTML = ["미통화", "부재"].map(function (state) { return '<div class="summary-card"><span>' + state + '</span><strong>' + active.filter(function (a) { return a.callStatus === state; }).length + "명</strong></div>"; }).join("") + '<div class="summary-card"><span>문자 미발송</span><strong>' + active.filter(function (a) { return a.smsStatus === "미발송"; }).length + "명</strong></div>";
       document.querySelector("#attendance-summary").innerHTML = ["출석", "결석", "미확인"].map(function (state) { return '<div class="summary-card"><span>' + state + '</span><strong>' + active.filter(function (a) { return a.attendance === state; }).length + "명</strong></div>"; }).join("");
-      const completed = active.filter(function (a) { return a.surveyCompleted; }).length;
-      document.querySelector("#survey-summary").innerHTML = '<div class="summary-card"><span>응답완료</span><strong>' + completed + '명</strong></div><div class="summary-card"><span>미응답</span><strong>' + Math.max(0, active.length - completed) + "명</strong></div>";
+      document.querySelector("#survey-summary").innerHTML = '<div class="summary-card"><span>제출 건수</span><strong>' + course.responses.length + '건</strong></div>';
     }
     function renderSurveyResults() {
       function scoreDistribution(label, values, isOverall, averageOverride) {
@@ -608,7 +606,7 @@
           '<div class="score-y-axis" aria-hidden="true"><span>' + maxCount + '명</span><span>' + middleCount + '</span><span>0명</span></div>' +
           '<div class="score-plot"><div class="score-bars">' + bars + '</div><div class="score-x-axis"><span>1점</span><span>2점</span><span>3점</span><span>4점</span><span>5점</span></div></div></div></section>';
       }
-      document.querySelector("#response-count").textContent = course.responses.length + "명";
+      document.querySelector("#response-count").textContent = course.responses.length + "건";
       const scores = course.questions.filter(function (q) { return q.type === "score"; });
       const scoreValues = [];
       course.responses.forEach(function (response) {
@@ -617,8 +615,6 @@
           if (value) scoreValues.push(value);
         });
       });
-      const surveyTargetCount = activeApplicants(course).length;
-      const responseRate = surveyTargetCount ? Math.round((course.responses.length / surveyTargetCount) * 100) : 0;
       const overallScore = scoreValues.length ? scoreValues.reduce(function (sum, value) { return sum + value; }, 0) / scoreValues.length : null;
       const overallAverage = overallScore !== null ? overallScore.toFixed(1) : "-";
       const respondentScoreBuckets = course.responses.map(function (response) {
@@ -627,10 +623,13 @@
         const average = values.reduce(function (sum, value) { return sum + value; }, 0) / values.length;
         return Math.min(5, Math.max(1, Math.floor(average)));
       }).filter(function (value) { return value !== null; });
+      const textAnswerCount = course.questions.filter(function (question) { return question.type === "text"; }).reduce(function (count, question) {
+        return count + course.responses.filter(function (response) { return response.answers[question.id]; }).length;
+      }, 0);
       document.querySelector("#overall-results-summary").innerHTML =
-        '<div class="summary-card"><span>교육 대상</span><strong>' + surveyTargetCount + '명</strong></div>' +
-        '<div class="summary-card"><span>응답 완료</span><strong>' + course.responses.length + '명</strong></div>' +
-        '<div class="summary-card"><span>응답률</span><strong>' + responseRate + '%</strong></div>' +
+        '<div class="summary-card"><span>제출 건수</span><strong>' + course.responses.length + '건</strong></div>' +
+        '<div class="summary-card"><span>점수형 문항</span><strong>' + scores.length + '개</strong></div>' +
+        '<div class="summary-card"><span>주관식 답변</span><strong>' + textAnswerCount + '건</strong></div>' +
         '<div class="summary-card"><span>전체 평균</span><strong>' + overallAverage + (scoreValues.length ? ' / 5' : '') + '</strong></div>';
       document.querySelector("#overall-score-chart").innerHTML = scores.length ? scoreDistribution("전체 객관식 평균", respondentScoreBuckets, true, overallScore) : "";
       document.querySelector("#score-results").innerHTML = scores.map(function (question) {
@@ -640,12 +639,15 @@
       const texts = course.questions.filter(function (q) { return q.type === "text"; });
       document.querySelector("#text-results").innerHTML = texts.map(function (question) {
         const answers = course.responses.filter(function (response) { return response.answers[question.id]; }).map(function (response) {
-          return '<article class="comment"><p>' + escapeHtml(response.answers[question.id]) + '</p><span>' + escapeHtml(response.name) + "</span></article>";
+          const responseIndex = course.responses.indexOf(response) + 1;
+          const gender = response.gender || "미입력";
+          const age = response.age == null ? "미입력" : response.age + "세";
+          return '<article class="comment"><p>' + escapeHtml(response.answers[question.id]) + '</p><span>응답자 ' + responseIndex + ' · 성별 ' + escapeHtml(gender) + ' · 나이 ' + escapeHtml(age) + "</span></article>";
         }).join("");
         return '<section class="comment-group"><h4>' + escapeHtml(question.text) + "</h4>" + (answers || '<p class="muted">등록된 답변이 없습니다.</p>') + "</section>";
       }).join("") || '<p class="muted">주관식 문항이 없습니다.</p>';
       const select = document.querySelector("#respondent-select");
-      select.innerHTML = '<option value="">응답자 선택</option>' + course.responses.map(function (r, index) { return '<option value="' + index + '">' + escapeHtml(r.name) + "</option>"; }).join("");
+      select.innerHTML = '<option value="">응답자 선택</option>' + course.responses.map(function (_, index) { return '<option value="' + index + '">응답자 ' + (index + 1) + "</option>"; }).join("");
       document.querySelector("#respondent-detail").innerHTML = '<p class="muted">응답자를 선택하면 상세 답변이 표시됩니다.</p>';
     }
 
@@ -796,8 +798,11 @@
     document.querySelector("#download-all").addEventListener("click", function () { download(course.applicants); });
     document.querySelector("#download-selected").addEventListener("click", function () { const ids = Array.from(document.querySelectorAll(".applicant-check:checked")).map(function (box) { return box.value; }); download(course.applicants.filter(function (a) { return ids.includes(a.id); })); });
     document.querySelector("#respondent-select").addEventListener("change", function (event) {
-      const response = course.responses[Number(event.target.value)];
-      document.querySelector("#respondent-detail").innerHTML = response ? '<h4>' + escapeHtml(response.name) + '</h4>' + course.questions.map(function (q) { return '<div class="answer-row"><span>' + escapeHtml(q.text) + '</span><strong>' + escapeHtml(response.answers[q.id] || "-") + (q.type === "score" && response.answers[q.id] ? "점" : "") + "</strong></div>"; }).join("") : '<p class="muted">응답자를 선택하면 상세 답변이 표시됩니다.</p>';
+      const responseIndex = event.target.value === "" ? -1 : Number(event.target.value);
+      const response = course.responses[responseIndex];
+      const gender = response && response.gender || "미입력";
+      const age = response && response.age != null ? response.age + "세" : "미입력";
+      document.querySelector("#respondent-detail").innerHTML = response ? '<h4>응답자 ' + (responseIndex + 1) + '</h4><p class="helper">성별: ' + escapeHtml(gender) + ' · 나이: ' + escapeHtml(age) + '</p>' + course.questions.map(function (q) { return '<div class="answer-row"><span>' + escapeHtml(q.text) + '</span><strong>' + escapeHtml(response.answers[q.id] || "-") + (q.type === "score" && response.answers[q.id] ? "점" : "") + "</strong></div>"; }).join("") : '<p class="muted">응답자를 선택하면 상세 답변이 표시됩니다.</p>';
     });
     renderAll();
   }
@@ -956,20 +961,28 @@
       form.hidden = true; setMessage(document.querySelector("#survey-message"), "만족도 조사 응답 기간이 종료되었습니다.", "error"); return;
     }
     form.addEventListener("submit", async function (event) {
-      event.preventDefault(); const values = Object.fromEntries(new FormData(form).entries()); const name = values.name.trim();
+      event.preventDefault();
+      const values = Object.fromEntries(new FormData(form).entries());
+      const age = Number(values.age);
+      if (values.gender !== "남성" && values.gender !== "여성") {
+        setMessage(document.querySelector("#survey-message"), "성별을 선택해 주세요.", "warning");
+        return;
+      }
+      if (!Number.isInteger(age) || age < 1 || age > 120) {
+        setMessage(document.querySelector("#survey-message"), "나이는 1세 이상 120세 이하의 정수로 입력해 주세요.", "warning");
+        return;
+      }
       const responseId = crypto.randomUUID();
       const responseResult = await requireDb().from("survey_responses").insert({
         id: responseId,
         course_id: course.id,
-        respondent_name: name
+        respondent_name: null,
+        gender: values.gender,
+        age: age
       });
       if (responseResult.error) {
-        if (responseResult.error.code === "23505") {
-          setMessage(document.querySelector("#survey-message"), "이미 만족도 조사에 참여하셨습니다.", "warning");
-        } else {
-          console.error(responseResult.error);
-          setMessage(document.querySelector("#survey-message"), "만족도 응답을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
-        }
+        console.error(responseResult.error);
+        setMessage(document.querySelector("#survey-message"), "만족도 응답을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
         return;
       }
       const answerRows = course.questions.map(function (question) {
