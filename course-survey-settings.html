@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>교육별 만족도 문항 설정 | 교육 운영 관리</title><link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="course-survey-settings">
+  <header class="site-header"><a class="brand" href="index.html"><span class="brand-mark"><img src="assets/images/K-HP 로고만.png" alt=""></span><span>교육 운영 관리</span></a><nav class="site-nav"><a class="active" href="index.html">교육 관리</a><a href="survey-settings.html">만족도 문항 설정</a><a href="login.html" data-logout hidden>로그아웃</a></nav></header>
+  <main class="page-shell narrow">
+    <div class="page-heading"><div><a id="course-survey-back-top" class="table-link" href="index.html">← 교육 상세</a><h1 id="course-survey-settings-title" style="margin-top:8px">교육별 만족도 문항 설정</h1><p>이 교육에 저장된 만족도 문항만 수정합니다. 공통 문항과 다른 교육에는 영향을 주지 않습니다.</p></div><button id="course-add-group" class="button" type="button">주제 추가</button></div>
+    <div id="course-settings-message" role="status" aria-live="polite" hidden></div>
+    <section class="card">
+      <div class="card-header"><div><h2>이 교육의 주제 및 문항</h2><p>답변이 있는 문항은 내용과 순서만 바꿀 수 있으며 삭제와 유형 변경은 제한됩니다.</p></div></div>
+      <div id="course-settings-list" class="question-groups"></div>
+      <div class="form-actions"><a id="course-survey-back" class="button button-ghost" href="index.html">취소</a><button id="save-course-questions" class="button" type="button" disabled>변경사항 저장</button></div>
+    </section>
+  </main>
+  <dialog id="course-group-dialog"><form id="course-group-form" class="dialog-content"><h2>주제 추가</h2><div class="stack"><label class="field"><span>주제명 <b class="required">*</b></span><input name="name" required maxlength="100" placeholder="예: 교육 시설 만족도"></label></div><div class="form-actions"><button id="course-group-cancel" class="button button-ghost" type="button">취소</button><button class="button" type="submit">확인</button></div></form></dialog>
+  <dialog id="course-question-dialog"><form id="course-question-form" class="dialog-content"><h2 id="course-question-dialog-title">문항 추가</h2><p id="course-question-dialog-group" class="dialog-context"></p><input type="hidden" name="index"><div class="stack"><label class="field"><span>문항 유형</span><select name="type"><option value="score">점수형 (1~5점)</option><option value="text">주관식</option></select></label><p id="course-question-lock-note" class="helper text-danger" hidden>이미 저장된 답변이 있어 문항 유형은 변경할 수 없습니다.</p><label class="field"><span>문항 내용</span><textarea name="text" rows="4" required placeholder="질문을 입력해 주세요."></textarea></label></div><div class="form-actions"><button id="course-question-cancel" class="button button-ghost" type="button">취소</button><button class="button" type="submit">확인</button></div></form></dialog>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/supabase.js"></script><script src="js/auth.js"></script>
+  <script src="js/mock-data.js"></script><script src="js/app.js"></script>
+</body>
+</html>

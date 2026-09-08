@@ -1187,6 +1187,304 @@
     render();
   }
 
+  async function initCourseSurveySettings() {
+    const courseId = param("id");
+    const list = document.querySelector("#course-settings-list");
+    const message = document.querySelector("#course-settings-message");
+    const saveButton = document.querySelector("#save-course-questions");
+    const addGroupButton = document.querySelector("#course-add-group");
+    const groupDialog = document.querySelector("#course-group-dialog");
+    const groupForm = document.querySelector("#course-group-form");
+    const questionDialog = document.querySelector("#course-question-dialog");
+    const questionForm = document.querySelector("#course-question-form");
+    const questionLockNote = document.querySelector("#course-question-lock-note");
+    let questions = [];
+    let groups = [];
+    let originalIds = new Set();
+    let originalTypes = new Map();
+    let activeGroupName = "";
+    let isDirty = false;
+
+    function detailUrl() {
+      return "education-detail.html?id=" + encodeURIComponent(courseId || "");
+    }
+
+    document.querySelector("#course-survey-back").href = courseId ? detailUrl() : "index.html";
+    document.querySelector("#course-survey-back-top").href = courseId ? detailUrl() : "index.html";
+
+    function setDirty(value) {
+      isDirty = Boolean(value);
+      saveButton.disabled = !isDirty;
+    }
+
+    function groupsFromQuestions() {
+      groups = groupQuestions(questions).map(function (group, index) {
+        return { name: group.name, displayOrder: index + 1 };
+      });
+    }
+
+    function captureOriginalState() {
+      originalIds = new Set(questions.filter(function (question) { return question.id; }).map(function (question) { return question.id; }));
+      originalTypes = new Map(questions.filter(function (question) { return question.id; }).map(function (question) { return [question.id, question.type]; }));
+    }
+
+    async function getAnsweredIds(questionIds) {
+      if (!questionIds.length) return new Set();
+      const result = await requireDb().from("survey_answers").select("question_id").in("question_id", questionIds);
+      return new Set(throwIfError(result).map(function (answer) { return answer.question_id; }));
+    }
+
+    async function loadCourseQuestions() {
+      const result = await requireDb().from("course_survey_questions").select("*").eq("course_id", courseId).order("group_order", { ascending: true }).order("display_order", { ascending: true });
+      const loadedQuestions = normalizeQuestionOrder(throwIfError(result).map(questionFromRow));
+      const answeredIds = await getAnsweredIds(loadedQuestions.map(function (question) { return question.id; }));
+      loadedQuestions.forEach(function (question) { question.hasAnswers = answeredIds.has(question.id); });
+      return loadedQuestions;
+    }
+
+    if (!courseId) {
+      addGroupButton.disabled = true;
+      setMessage(message, "교육 정보가 지정되지 않았습니다. 교육 상세 화면에서 다시 열어 주세요.", "error");
+      return;
+    }
+
+    try {
+      const courseResult = await requireDb().from("courses").select("id,name").eq("id", courseId).maybeSingle();
+      if (courseResult.error) throw courseResult.error;
+      if (!courseResult.data) throw new Error("Course not found");
+      document.querySelector("#course-survey-settings-title").textContent = courseResult.data.name + " 만족도 문항 설정";
+      questions = await loadCourseQuestions();
+      groupsFromQuestions();
+      captureOriginalState();
+    } catch (error) {
+      console.error("교육별 만족도 문항 조회 실패", error);
+      addGroupButton.disabled = true;
+      saveButton.disabled = true;
+      setMessage(message, "이 교육의 만족도 문항을 불러오지 못했습니다. 데이터베이스 권한과 교육 정보를 확인해 주세요.", "error");
+      return;
+    }
+
+    function normalizeCourseSettingsOrder() {
+      const orderedQuestions = [];
+      groups.forEach(function (group, groupIndex) {
+        group.displayOrder = groupIndex + 1;
+        questions.filter(function (question) {
+          return normalizedGroupName(question.groupName) === normalizedGroupName(group.name);
+        }).forEach(function (question) {
+          question.groupName = group.name;
+          question.groupOrder = group.displayOrder;
+          question.displayOrder = orderedQuestions.length + 1;
+          orderedQuestions.push(question);
+        });
+      });
+      questions = orderedQuestions;
+    }
+
+    function render() {
+      normalizeCourseSettingsOrder();
+      let questionNumber = 0;
+      list.innerHTML = groups.map(function (group, groupIndex) {
+        const groupItems = questions.filter(function (question) { return question.groupName === group.name; });
+        const items = groupItems.map(function (question, questionIndex) {
+          const index = questions.indexOf(question);
+          questionNumber += 1;
+          const answerState = question.hasAnswers ? '<span class="badge badge-warning">답변 있음 · 삭제/유형 변경 불가</span>' : "";
+          const deleteDisabled = question.hasAnswers ? ' disabled title="이미 저장된 답변이 있어 삭제할 수 없습니다."' : "";
+          return '<li class="question-item"><div><span class="question-number">' + questionNumber + '</span><div><strong>' + escapeHtml(question.text) + '</strong><span class="type-label">' + (question.type === "score" ? "점수형 · 1~5점" : "주관식") + " " + answerState + '</span></div></div><div class="inline-actions"><button class="button button-small button-ghost" data-course-move="up" data-index="' + index + '" ' + (questionIndex === 0 ? "disabled" : "") + '>위로</button><button class="button button-small button-ghost" data-course-move="down" data-index="' + index + '" ' + (questionIndex === groupItems.length - 1 ? "disabled" : "") + '>아래로</button><button class="button button-small button-ghost" data-course-edit-question="' + index + '">수정</button><button class="button button-small button-danger" data-course-delete-question="' + index + '"' + deleteDisabled + '>삭제</button></div></li>';
+        }).join("");
+        const questionList = items || '<li class="empty-cell question-group-empty">등록된 문항이 없습니다. 문항을 추가해야 이 주제를 저장할 수 있습니다.</li>';
+        const removeGroup = groupItems.length ? "" : '<button class="button button-small button-danger" data-course-delete-group="' + groupIndex + '">빈 주제 삭제</button>';
+        return '<section class="question-group-card"><div class="question-group-header"><div><span class="group-order-label">주제 ' + (groupIndex + 1) + '</span><h3>' + escapeHtml(group.name) + '</h3><span>' + groupItems.length + '개 문항</span></div><div class="inline-actions"><button class="button button-small" data-course-add-question="' + groupIndex + '">문항 추가</button><button class="button button-small button-ghost" data-course-move-group="up" data-group-index="' + groupIndex + '" ' + (groupIndex === 0 ? "disabled" : "") + '>주제 위로</button><button class="button button-small button-ghost" data-course-move-group="down" data-group-index="' + groupIndex + '" ' + (groupIndex === groups.length - 1 ? "disabled" : "") + '>주제 아래로</button>' + removeGroup + '</div></div><ol class="question-list">' + questionList + "</ol></section>";
+      }).join("") || '<div class="empty-cell">이 교육에 등록된 문항이 없습니다. 주제를 추가한 뒤 문항을 등록해 주세요.</div>';
+    }
+
+    addGroupButton.addEventListener("click", function () {
+      groupForm.reset();
+      groupForm.elements.name.setCustomValidity("");
+      groupDialog.showModal();
+    });
+    document.querySelector("#course-group-cancel").addEventListener("click", function () { groupDialog.close(); });
+    groupForm.elements.name.addEventListener("input", function () { groupForm.elements.name.setCustomValidity(""); });
+    groupForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      const name = groupForm.elements.name.value.trim();
+      const duplicate = groups.some(function (group) { return normalizedGroupName(group.name) === normalizedGroupName(name); });
+      if (duplicate) {
+        groupForm.elements.name.setCustomValidity("같은 이름의 주제가 이미 있습니다.");
+        groupForm.elements.name.reportValidity();
+        return;
+      }
+      groups.push({ name: name, displayOrder: groups.length + 1 });
+      groupDialog.close();
+      setDirty(true);
+      render();
+    });
+
+    document.querySelector("#course-question-cancel").addEventListener("click", function () { questionDialog.close(); });
+    list.addEventListener("click", function (event) {
+      const add = event.target.dataset.courseAddQuestion;
+      const edit = event.target.dataset.courseEditQuestion;
+      const remove = event.target.dataset.courseDeleteQuestion;
+      const move = event.target.dataset.courseMove;
+      const moveGroup = event.target.dataset.courseMoveGroup;
+      const removeGroup = event.target.dataset.courseDeleteGroup;
+      const index = Number(event.target.dataset.index);
+      if (add !== undefined) {
+        const group = groups[Number(add)];
+        activeGroupName = group.name;
+        questionForm.reset();
+        questionForm.elements.index.value = "";
+        questionForm.elements.type.disabled = false;
+        questionLockNote.hidden = true;
+        document.querySelector("#course-question-dialog-title").textContent = "문항 추가";
+        document.querySelector("#course-question-dialog-group").textContent = "주제: " + group.name;
+        questionDialog.showModal();
+      }
+      if (edit !== undefined) {
+        const question = questions[Number(edit)];
+        activeGroupName = question.groupName;
+        questionForm.elements.index.value = edit;
+        questionForm.elements.type.value = question.type;
+        questionForm.elements.type.disabled = question.hasAnswers;
+        questionForm.elements.text.value = question.text;
+        questionLockNote.hidden = !question.hasAnswers;
+        document.querySelector("#course-question-dialog-title").textContent = "문항 수정";
+        document.querySelector("#course-question-dialog-group").textContent = "주제: " + question.groupName;
+        questionDialog.showModal();
+      }
+      if (remove !== undefined) {
+        const question = questions[Number(remove)];
+        if (question.hasAnswers) {
+          setMessage(message, "이미 저장된 답변이 있는 문항은 삭제할 수 없습니다.", "warning");
+        } else if (confirm("이 교육에서 해당 문항을 삭제할까요?")) {
+          questions.splice(Number(remove), 1);
+          setDirty(true);
+          render();
+        }
+      }
+      if (move) {
+        const groupItems = questions.filter(function (question) { return question.groupName === questions[index].groupName; });
+        const position = groupItems.indexOf(questions[index]);
+        const targetQuestion = groupItems[move === "up" ? position - 1 : position + 1];
+        const targetIndex = questions.indexOf(targetQuestion);
+        if (targetQuestion) {
+          const temporary = questions[index];
+          questions[index] = questions[targetIndex];
+          questions[targetIndex] = temporary;
+          setDirty(true);
+          render();
+        }
+      }
+      if (moveGroup) {
+        const groupIndex = Number(event.target.dataset.groupIndex);
+        const targetIndex = moveGroup === "up" ? groupIndex - 1 : groupIndex + 1;
+        if (groups[targetIndex]) {
+          const temporary = groups[groupIndex];
+          groups[groupIndex] = groups[targetIndex];
+          groups[targetIndex] = temporary;
+          setDirty(true);
+          render();
+        }
+      }
+      if (removeGroup !== undefined && !questions.some(function (question) { return question.groupName === groups[Number(removeGroup)].name; })) {
+        groups.splice(Number(removeGroup), 1);
+        setDirty(true);
+        render();
+      }
+    });
+
+    questionForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      const indexValue = questionForm.elements.index.value;
+      const index = Number(indexValue);
+      const previous = indexValue === "" ? null : questions[index];
+      const type = questionForm.elements.type.value;
+      if (previous && previous.hasAnswers && type !== previous.type) {
+        setMessage(message, "이미 저장된 답변이 있어 문항 유형을 변경할 수 없습니다.", "warning");
+        return;
+      }
+      const item = {
+        id: previous ? previous.id : null,
+        type: type,
+        text: questionForm.elements.text.value.trim(),
+        groupName: activeGroupName,
+        groupOrder: groups.findIndex(function (group) { return group.name === activeGroupName; }) + 1,
+        hasAnswers: previous ? previous.hasAnswers : false
+      };
+      if (previous) {
+        questions[index] = item;
+      } else {
+        const lastGroupIndex = questions.reduce(function (lastIndex, question, questionIndex) {
+          return question.groupName === activeGroupName ? questionIndex : lastIndex;
+        }, -1);
+        if (lastGroupIndex >= 0) questions.splice(lastGroupIndex + 1, 0, item);
+        else questions.push(item);
+      }
+      questionDialog.close();
+      setDirty(true);
+      render();
+    });
+
+    saveButton.addEventListener("click", async function () {
+      if (!isDirty) return;
+      const emptyGroup = groups.find(function (group) {
+        return !questions.some(function (question) { return normalizedGroupName(question.groupName) === normalizedGroupName(group.name); });
+      });
+      if (emptyGroup) {
+        setMessage(message, "'" + emptyGroup.name + "' 주제에 문항을 하나 이상 추가하거나 빈 주제를 삭제해 주세요.", "warning");
+        return;
+      }
+      saveButton.disabled = true;
+      normalizeCourseSettingsOrder();
+      const currentIds = new Set(questions.filter(function (question) { return question.id; }).map(function (question) { return question.id; }));
+      const removedIds = Array.from(originalIds).filter(function (id) { return !currentIds.has(id); });
+      try {
+        const answeredIds = await getAnsweredIds(Array.from(originalIds));
+        if (removedIds.some(function (id) { return answeredIds.has(id); })) {
+          throw new Error("답변이 등록된 문항이 포함되어 삭제할 수 없습니다. 페이지를 새로고침해 주세요.");
+        }
+        const changedAnsweredQuestion = questions.find(function (question) {
+          return question.id && answeredIds.has(question.id) && originalTypes.get(question.id) !== question.type;
+        });
+        if (changedAnsweredQuestion) throw new Error("답변이 등록된 문항은 유형을 변경할 수 없습니다. 페이지를 새로고침해 주세요.");
+
+        for (let index = 0; index < questions.length; index += 1) {
+          const question = questions[index];
+          const values = { question_type: question.type, question_text: question.text, display_order: question.displayOrder, group_name: question.groupName, group_order: question.groupOrder };
+          if (question.id) {
+            const updateResult = await requireDb().from("course_survey_questions").update(values).eq("course_id", courseId).eq("id", question.id).select("id").maybeSingle();
+            if (updateResult.error) throw updateResult.error;
+            if (!updateResult.data) throw new Error("문항 수정 대상이 현재 교육에 속하지 않습니다.");
+          } else {
+            const insertedQuestion = throwIfError(await requireDb().from("course_survey_questions").insert(Object.assign({ course_id: courseId }, values)).select("id").single());
+            question.id = insertedQuestion.id;
+          }
+        }
+        if (removedIds.length) {
+          const deleteResult = await requireDb().from("course_survey_questions").delete().eq("course_id", courseId).in("id", removedIds).select("id");
+          const deletedRows = throwIfError(deleteResult);
+          if (deletedRows.length !== removedIds.length) throw new Error("일부 문항을 삭제할 수 없습니다. 답변 연결 여부를 확인해 주세요.");
+        }
+
+        questions = await loadCourseQuestions();
+        groupsFromQuestions();
+        captureOriginalState();
+        setDirty(false);
+        render();
+        setMessage(message, "이 교육의 만족도 문항을 저장했습니다. 공통 문항과 다른 교육은 변경되지 않았습니다.", "success");
+      } catch (error) {
+        console.error("교육별 만족도 문항 저장 실패", error);
+        saveButton.disabled = false;
+        const reason = String(error && error.message || "");
+        const protectedQuestion = (error && error.code === "23503") || reason.includes("답변") || reason.includes("문항 수정 대상");
+        setMessage(message, protectedQuestion ? reason : "이 교육의 만족도 문항을 저장하지 못했습니다. 데이터베이스 권한을 확인한 후 다시 시도해 주세요.", protectedQuestion ? "warning" : "error");
+      }
+    });
+
+    setDirty(false);
+    render();
+  }
+
   document.addEventListener("DOMContentLoaded", async function () {
     if (window.authReady) {
       const isAuthenticated = await window.authReady;
@@ -1199,5 +1497,6 @@
     if (page === "apply") initApply();
     if (page === "survey") initSurvey();
     if (page === "survey-settings") initSurveySettings();
+    if (page === "course-survey-settings") initCourseSurveySettings();
   });
 })();
