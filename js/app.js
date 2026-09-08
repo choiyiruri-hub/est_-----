@@ -170,11 +170,13 @@
 
   async function getQuestions() {
     const result = await requireDb().from("survey_question_templates").select("*").order("group_order", { ascending: true }).order("display_order", { ascending: true });
+    if (result.error) console.error("survey_question_templates 조회 실패", result.error);
     return normalizeQuestionOrder(throwIfError(result).map(questionFromRow));
   }
 
   async function getQuestionGroups() {
     const result = await requireDb().from("survey_question_groups").select("*").order("display_order", { ascending: true });
+    if (result.error) console.error("survey_question_groups 조회 실패", result.error);
     return throwIfError(result).map(function (group) {
       return { id: group.id, name: group.name, displayOrder: group.display_order };
     });
@@ -1012,7 +1014,7 @@
         if (!exists) groups.push({ id: null, name: name, displayOrder: groups.length + 1 });
       });
     } catch (error) {
-      console.error(error);
+      console.error("만족도 문항 설정 초기화 실패", error);
       setMessage(document.querySelector("#settings-message"), "만족도 문항을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
       document.querySelector("#save-questions").disabled = true;
     }

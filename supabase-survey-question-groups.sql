@@ -91,8 +91,41 @@ where not exists (
 )
 on conflict do nothing;
 
--- 만족도 문항 설정 화면은 로그인한 관리자만 주제를 관리합니다.
+-- 만족도 문항 설정 화면은 로그인한 관리자만 공통 주제와 문항을 관리합니다.
+-- UPDATE/DELETE 정책에도 SELECT 정책이 필요하므로 네 작업을 각각 명시합니다.
+-- course_survey_questions는 생성 시 복사되는 과거 교육 문항이므로 이 파일에서
+-- UPDATE/DELETE 권한을 새로 열지 않습니다(기존 교육 문항·응답 보존).
+alter table public.survey_question_templates enable row level security;
 alter table public.survey_question_groups enable row level security;
+
+drop policy if exists "survey_question_templates_authenticated_select" on public.survey_question_templates;
+create policy "survey_question_templates_authenticated_select"
+on public.survey_question_templates
+for select
+to authenticated
+using (true);
+
+drop policy if exists "survey_question_templates_authenticated_insert" on public.survey_question_templates;
+create policy "survey_question_templates_authenticated_insert"
+on public.survey_question_templates
+for insert
+to authenticated
+with check (true);
+
+drop policy if exists "survey_question_templates_authenticated_update" on public.survey_question_templates;
+create policy "survey_question_templates_authenticated_update"
+on public.survey_question_templates
+for update
+to authenticated
+using (true)
+with check (true);
+
+drop policy if exists "survey_question_templates_authenticated_delete" on public.survey_question_templates;
+create policy "survey_question_templates_authenticated_delete"
+on public.survey_question_templates
+for delete
+to authenticated
+using (true);
 
 drop policy if exists "survey_question_groups_authenticated_select" on public.survey_question_groups;
 create policy "survey_question_groups_authenticated_select"
@@ -116,8 +149,37 @@ to authenticated
 using (true)
 with check (true);
 
+drop policy if exists "survey_question_groups_authenticated_delete" on public.survey_question_groups;
+create policy "survey_question_groups_authenticated_delete"
+on public.survey_question_groups
+for delete
+to authenticated
+using (true);
+
 grant usage on schema public to authenticated;
-grant select, insert, update on table public.survey_question_groups to authenticated;
+grant select, insert, update, delete on table public.survey_question_templates to authenticated;
+grant select, insert, update, delete on table public.survey_question_groups to authenticated;
 grant usage, select on sequence public.survey_question_groups_id_seq to authenticated;
 
 commit;
+
+-- 실행 직후 SQL Editor 결과에서 실제 컬럼과 RLS/권한이 모두 생성됐는지 확인합니다.
+select table_name, column_name, data_type, is_nullable, column_default
+from information_schema.columns
+where table_schema = 'public'
+  and table_name in ('survey_question_templates', 'course_survey_questions', 'survey_question_groups')
+  and column_name in ('group_name', 'group_order', 'name', 'display_order')
+order by table_name, ordinal_position;
+
+select schemaname, tablename, policyname, roles, cmd
+from pg_policies
+where schemaname = 'public'
+  and tablename in ('survey_question_templates', 'course_survey_questions', 'survey_question_groups')
+order by tablename, cmd, policyname;
+
+select grantee, table_name, privilege_type
+from information_schema.role_table_grants
+where table_schema = 'public'
+  and table_name in ('survey_question_templates', 'course_survey_questions', 'survey_question_groups')
+  and grantee = 'authenticated'
+order by table_name, privilege_type;
