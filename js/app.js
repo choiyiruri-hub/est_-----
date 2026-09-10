@@ -604,6 +604,7 @@
           '<div class="score-plot"><div class="score-bars">' + bars + '</div><div class="score-x-axis"><span>1점</span><span>2점</span><span>3점</span><span>4점</span><span>5점</span></div></div></div></section>';
       }
       document.querySelector("#response-count").textContent = course.responses.length + "건";
+      document.querySelector("#delete-all-responses").disabled = course.responses.length === 0;
       const scores = course.questions.filter(function (q) { return q.type === "score"; });
       const scoreValues = [];
       course.responses.forEach(function (response) {
@@ -653,6 +654,16 @@
       const select = document.querySelector("#respondent-select");
       select.innerHTML = '<option value="">응답자 선택</option>' + course.responses.map(function (_, index) { return '<option value="' + index + '">응답자 ' + (index + 1) + "</option>"; }).join("");
       document.querySelector("#respondent-detail").innerHTML = '<p class="muted">응답자를 선택하면 상세 답변이 표시됩니다.</p>';
+    }
+
+    function renderRespondentDetail(responseIndex) {
+      const response = course.responses[responseIndex];
+      const gender = response && response.gender || "미입력";
+      const age = response && response.age != null ? response.age + "세" : "미입력";
+      document.querySelector("#respondent-detail").innerHTML = response ?
+        '<div class="respondent-detail-heading"><div><h4>응답자 ' + (responseIndex + 1) + '</h4><p class="helper">성별: ' + escapeHtml(gender) + ' · 나이: ' + escapeHtml(age) + '</p></div><button class="button button-small button-danger" type="button" data-delete-response="' + escapeHtml(response.id) + '">이 응답 삭제</button></div>' +
+        course.questions.map(function (q) { return '<div class="answer-row"><span>' + escapeHtml(q.text) + '</span><strong>' + escapeHtml(response.answers[q.id] || "-") + (q.type === "score" && response.answers[q.id] ? "점" : "") + "</strong></div>"; }).join("") :
+        '<p class="muted">응답자를 선택하면 상세 답변이 표시됩니다.</p>';
     }
 
     document.querySelector("#applicant-body").addEventListener("click", async function (event) {
@@ -810,10 +821,64 @@
     document.querySelector("#download-selected").addEventListener("click", function () { const ids = Array.from(document.querySelectorAll(".applicant-check:checked")).map(function (box) { return box.value; }); download(course.applicants.filter(function (a) { return ids.includes(a.id); })); });
     document.querySelector("#respondent-select").addEventListener("change", function (event) {
       const responseIndex = event.target.value === "" ? -1 : Number(event.target.value);
-      const response = course.responses[responseIndex];
-      const gender = response && response.gender || "미입력";
-      const age = response && response.age != null ? response.age + "세" : "미입력";
-      document.querySelector("#respondent-detail").innerHTML = response ? '<h4>응답자 ' + (responseIndex + 1) + '</h4><p class="helper">성별: ' + escapeHtml(gender) + ' · 나이: ' + escapeHtml(age) + '</p>' + course.questions.map(function (q) { return '<div class="answer-row"><span>' + escapeHtml(q.text) + '</span><strong>' + escapeHtml(response.answers[q.id] || "-") + (q.type === "score" && response.answers[q.id] ? "점" : "") + "</strong></div>"; }).join("") : '<p class="muted">응답자를 선택하면 상세 답변이 표시됩니다.</p>';
+      renderRespondentDetail(responseIndex);
+    });
+    document.querySelector("#respondent-detail").addEventListener("click", async function (event) {
+      const responseId = event.target.dataset.deleteResponse;
+      if (!responseId) return;
+      const responseIndex = course.responses.findIndex(function (response) { return String(response.id) === responseId; });
+      if (responseIndex < 0 || !confirm("이 응답은 복구할 수 없습니다. 삭제할까요?")) return;
+      event.target.disabled = true;
+      const result = await requireDb().rpc("delete_survey_response", {
+        p_course_id: String(course.id),
+        p_response_id: responseId
+      });
+      if (result.error) {
+        console.error("만족도 개별 응답 삭제 실패", result.error);
+        event.target.disabled = false;
+        setMessage(document.querySelector("#detail-message"), "응답을 삭제하지 못했습니다. 관리자 삭제 권한 SQL 적용 여부를 확인해 주세요.", "error");
+        return;
+      }
+      course.responses.splice(responseIndex, 1);
+      renderAll();
+      setMessage(document.querySelector("#detail-message"), "선택한 만족도 응답을 삭제했습니다.", "success");
+    });
+    const deleteAllDialog = document.querySelector("#delete-all-responses-dialog");
+    const deleteAllForm = document.querySelector("#delete-all-responses-form");
+    const deleteAllConfirmation = deleteAllForm.elements.confirmation;
+    const deleteAllConfirmButton = document.querySelector("#delete-all-responses-confirm");
+    document.querySelector("#delete-all-responses").addEventListener("click", function () {
+      if (!course.responses.length) return;
+      deleteAllForm.reset();
+      deleteAllConfirmButton.disabled = true;
+      document.querySelector("#delete-response-course-name").textContent = course.name;
+      deleteAllDialog.showModal();
+    });
+    deleteAllConfirmation.addEventListener("input", function () {
+      deleteAllConfirmButton.disabled = deleteAllConfirmation.value.trim() !== "전체 삭제";
+    });
+    document.querySelector("#delete-all-responses-cancel").addEventListener("click", function () {
+      deleteAllForm.reset();
+      deleteAllDialog.close();
+    });
+    deleteAllForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      if (deleteAllConfirmation.value.trim() !== "전체 삭제" || !course.responses.length) return;
+      const deletedCount = course.responses.length;
+      deleteAllConfirmButton.disabled = true;
+      const result = await requireDb().rpc("delete_course_survey_responses", {
+        p_course_id: String(course.id)
+      });
+      if (result.error) {
+        console.error("만족도 전체 응답 삭제 실패", result.error);
+        deleteAllConfirmButton.disabled = false;
+        setMessage(document.querySelector("#detail-message"), "전체 응답을 삭제하지 못했습니다. 관리자 삭제 권한 SQL 적용 여부를 확인해 주세요.", "error");
+        return;
+      }
+      course.responses = [];
+      deleteAllDialog.close();
+      renderAll();
+      setMessage(document.querySelector("#detail-message"), "현재 교육의 만족도 응답 " + deletedCount + "건을 모두 삭제했습니다.", "success");
     });
     renderAll();
   }

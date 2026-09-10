@@ -418,6 +418,10 @@ tbody tr:hover { background: var(--primary-soft); }
 .score-distribution-details summary { padding: 13px 15px; color: var(--primary); font-size: 13px; font-weight: 800; cursor: pointer; }
 .score-distribution-details[open] summary { border-bottom: 1px solid var(--line); }
 .score-distribution-details > div { padding: 0 16px; background: #fff; }
+.respondent-detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.respondent-detail-heading h4 { margin: 0 0 4px; }
+.respondent-detail-heading .helper { margin: 0; }
+.delete-response-warning { margin: 0 0 18px; color: var(--danger); font-weight: 700; }
 .score-result-pair { display: grid; grid-template-columns: minmax(150px, .8fr) minmax(270px, 1.2fr); gap: 20px; align-items: center; padding: 18px 0; }
 .score-result-pair + .score-result-pair { border-top: 1px solid var(--line); }
 .score-result-overall { margin-bottom: 10px; padding: 16px; border: 1px solid #efd49c; border-radius: 10px; background: var(--secondary-soft); }
@@ -660,6 +664,7 @@ dialog::backdrop { background: rgba(4, 3, 22, .5); }
   .question-average-axis-row { grid-template-columns: 1fr; padding-left: 16px; }
   .question-average-axis-row > span { display: none; }
   .question-average-row { grid-template-columns: 1fr; gap: 7px; padding: 10px 14px; }
+  .respondent-detail-heading { flex-direction: column; }
   .course-info-layout, .consent-options { grid-template-columns: 1fr; }
   .course-poster { max-height: 520px; }
   .consent-section { padding: 15px; }
