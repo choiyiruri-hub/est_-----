@@ -507,6 +507,8 @@
     }
     addCourseLinks(document, course);
     document.querySelector("#detail-title").textContent = course.name;
+    document.querySelector("#print-course-name").textContent = course.name;
+    document.querySelector("#print-course-date").textContent = formatDate(course.date);
     document.querySelector("#detail-meta").innerHTML = [
       ["교육일", formatDate(course.date)], ["교육시간", course.startTime + "–" + course.endTime], ["장소", course.place],
       ["정원", course.capacity + "명"], ["신청 인원", '<span id="current-count"></span>'], ["초과 인원", '<span id="over-count"></span>'],
@@ -627,7 +629,14 @@
         '<div class="summary-card"><span>주관식 답변</span><strong>' + textAnswerCount + '건</strong></div>' +
         '<div class="summary-card"><span>전체 평균</span><strong>' + overallAverage + (scoreValues.length ? ' / 5' : '') + '</strong></div>';
       document.querySelector("#overall-score-chart").innerHTML = scores.length ? scoreDistribution("전체 객관식 평균", respondentScoreBuckets, true, overallScore) : "";
-      document.querySelector("#score-results").innerHTML = scores.map(function (question) {
+      document.querySelector("#score-results").innerHTML = scores.length ? '<div class="question-average-chart" role="img" aria-label="문항별 평균 점수 비교 차트"><div class="question-average-axis-row" aria-hidden="true"><span>문항 · 응답 수</span><div class="question-average-axis"><div><span style="left:20%">1점</span><span style="left:40%">2점</span><span style="left:60%">3점</span><span style="left:80%">4점</span><span style="left:100%">5점</span></div></div></div>' + scores.map(function (question, questionIndex) {
+        const values = course.responses.map(function (response) { return Number(response.answers[question.id]); }).filter(Boolean);
+        const average = values.length ? values.reduce(function (sum, value) { return sum + value; }, 0) / values.length : null;
+        const scoreText = average !== null ? average.toFixed(1) + " / 5" : "-";
+        const width = average !== null ? Math.min(100, Math.max(0, average / 5 * 100)) : 0;
+        return '<div class="question-average-row"><div class="question-average-label"><span>' + (questionIndex + 1) + '</span><div><strong>' + escapeHtml(question.text) + '</strong><small>응답 ' + values.length + '명</small></div></div><div class="question-average-meter" role="img" aria-label="' + escapeHtml(question.text + ": 평균 " + scoreText + ", 응답 " + values.length + "명") + '"><span class="question-average-fill" style="width:' + width + '%"></span><strong class="question-average-value">' + scoreText + '</strong></div></div>';
+      }).join("") + '</div>' : '<p class="muted">점수형 문항이 없습니다.</p>';
+      document.querySelector("#score-distributions").innerHTML = scores.map(function (question) {
         const values = course.responses.map(function (response) { return Number(response.answers[question.id]); }).filter(Boolean);
         return scoreDistribution(question.text, values, false);
       }).join("") || '<p class="muted">점수형 문항이 없습니다.</p>';
@@ -694,6 +703,13 @@
       renderAll();
     });
     document.querySelector("#edit-cancel").addEventListener("click", function () { document.querySelector("#edit-dialog").close(); });
+    document.querySelector("#print-survey-results").addEventListener("click", function () {
+      document.body.classList.add("printing-survey-results");
+      window.addEventListener("afterprint", function () {
+        document.body.classList.remove("printing-survey-results");
+      }, { once: true });
+      window.print();
+    });
     document.querySelector("#select-all").addEventListener("change", function (event) { document.querySelectorAll(".applicant-check").forEach(function (box) { box.checked = event.target.checked; }); });
 
     function syncBulkSelection(checkSelector, selectAllId, actionButtonId) {
