@@ -680,6 +680,7 @@ dialog::backdrop { background: rgba(4, 3, 22, .5); }
   .login-actions { grid-template-columns: 1fr; }
   .login-panel .brand { margin-bottom: 44px; }
   .public-shell { width: min(100% - 20px, 700px); margin: 24px auto 44px; }
+  .mobile-subtitle-line { display: block; }
 }
 
 @page survey-results { size: A4 landscape; margin: 10mm; }
