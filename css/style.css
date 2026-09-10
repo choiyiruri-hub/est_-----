@@ -421,7 +421,6 @@ tbody tr:hover { background: var(--primary-soft); }
 .respondent-detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
 .respondent-detail-heading h4 { margin: 0 0 4px; }
 .respondent-detail-heading .helper { margin: 0; }
-.delete-response-warning { margin: 0 0 18px; color: var(--danger); font-weight: 700; }
 .score-result-pair { display: grid; grid-template-columns: minmax(150px, .8fr) minmax(270px, 1.2fr); gap: 20px; align-items: center; padding: 18px 0; }
 .score-result-pair + .score-result-pair { border-top: 1px solid var(--line); }
 .score-result-overall { margin-bottom: 10px; padding: 16px; border: 1px solid #efd49c; border-radius: 10px; background: var(--secondary-soft); }

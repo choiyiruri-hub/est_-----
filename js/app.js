@@ -604,7 +604,6 @@
           '<div class="score-plot"><div class="score-bars">' + bars + '</div><div class="score-x-axis"><span>1점</span><span>2점</span><span>3점</span><span>4점</span><span>5점</span></div></div></div></section>';
       }
       document.querySelector("#response-count").textContent = course.responses.length + "건";
-      document.querySelector("#delete-all-responses").disabled = course.responses.length === 0;
       const scores = course.questions.filter(function (q) { return q.type === "score"; });
       const scoreValues = [];
       course.responses.forEach(function (response) {
@@ -842,43 +841,6 @@
       course.responses.splice(responseIndex, 1);
       renderAll();
       setMessage(document.querySelector("#detail-message"), "선택한 만족도 응답을 삭제했습니다.", "success");
-    });
-    const deleteAllDialog = document.querySelector("#delete-all-responses-dialog");
-    const deleteAllForm = document.querySelector("#delete-all-responses-form");
-    const deleteAllConfirmation = deleteAllForm.elements.confirmation;
-    const deleteAllConfirmButton = document.querySelector("#delete-all-responses-confirm");
-    document.querySelector("#delete-all-responses").addEventListener("click", function () {
-      if (!course.responses.length) return;
-      deleteAllForm.reset();
-      deleteAllConfirmButton.disabled = true;
-      document.querySelector("#delete-response-course-name").textContent = course.name;
-      deleteAllDialog.showModal();
-    });
-    deleteAllConfirmation.addEventListener("input", function () {
-      deleteAllConfirmButton.disabled = deleteAllConfirmation.value.trim() !== "전체 삭제";
-    });
-    document.querySelector("#delete-all-responses-cancel").addEventListener("click", function () {
-      deleteAllForm.reset();
-      deleteAllDialog.close();
-    });
-    deleteAllForm.addEventListener("submit", async function (event) {
-      event.preventDefault();
-      if (deleteAllConfirmation.value.trim() !== "전체 삭제" || !course.responses.length) return;
-      const deletedCount = course.responses.length;
-      deleteAllConfirmButton.disabled = true;
-      const result = await requireDb().rpc("delete_course_survey_responses", {
-        p_course_id: String(course.id)
-      });
-      if (result.error) {
-        console.error("만족도 전체 응답 삭제 실패", result.error);
-        deleteAllConfirmButton.disabled = false;
-        setMessage(document.querySelector("#detail-message"), "전체 응답을 삭제하지 못했습니다. 관리자 삭제 권한 SQL 적용 여부를 확인해 주세요.", "error");
-        return;
-      }
-      course.responses = [];
-      deleteAllDialog.close();
-      renderAll();
-      setMessage(document.querySelector("#detail-message"), "현재 교육의 만족도 응답 " + deletedCount + "건을 모두 삭제했습니다.", "success");
     });
     renderAll();
   }
