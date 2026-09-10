@@ -16,11 +16,6 @@
   }
 
   const DEFAULT_QUESTION_GROUP = "기본 문항";
-  const PRESET_QUESTION_GROUPS = [
-    "교육 내용 만족도",
-    "강사 및 운영 만족도",
-    "전반적 만족도"
-  ];
 
   function questionFromRow(question) {
     return {
@@ -1008,6 +1003,7 @@
     let questions = [];
     let groups = [];
     let activeGroupName = "";
+    let editingGroupIndex = null;
     const list = document.querySelector("#settings-list");
     const questionDialog = document.querySelector("#question-dialog");
     const questionForm = document.querySelector("#question-form");
@@ -1021,10 +1017,6 @@
       groupQuestions(questions).forEach(function (questionGroup) {
         const exists = groups.some(function (group) { return normalizedGroupName(group.name) === normalizedGroupName(questionGroup.name); });
         if (!exists) groups.push({ id: null, name: questionGroup.name, displayOrder: groups.length + 1 });
-      });
-      PRESET_QUESTION_GROUPS.forEach(function (name) {
-        const exists = groups.some(function (group) { return normalizedGroupName(group.name) === normalizedGroupName(name); });
-        if (!exists) groups.push({ id: null, name: name, displayOrder: groups.length + 1 });
       });
     } catch (error) {
       console.error("만족도 문항 설정 초기화 실패", error);
@@ -1059,40 +1051,83 @@
           return '<li class="question-item"><div><span class="question-number">' + questionNumber + '</span><div><strong>' + escapeHtml(question.text) + '</strong><span class="type-label">' + (question.type === "score" ? "점수형 · 1~5점" : "주관식") + '</span></div></div><div class="inline-actions"><button class="button button-small button-ghost" data-move="up" data-index="' + index + '" ' + (questionIndex === 0 ? "disabled" : "") + '>위로</button><button class="button button-small button-ghost" data-move="down" data-index="' + index + '" ' + (questionIndex === groupItems.length - 1 ? "disabled" : "") + '>아래로</button><button class="button button-small button-ghost" data-edit-question="' + index + '">수정</button><button class="button button-small button-danger" data-delete-question="' + index + '">삭제</button></div></li>';
         }).join("");
         const questionList = items || '<li class="empty-cell question-group-empty">등록된 문항이 없습니다.</li>';
-        return '<section class="question-group-card"><div class="question-group-header"><div><span class="group-order-label">주제 ' + (groupIndex + 1) + '</span><h3>' + escapeHtml(group.name) + '</h3><span>' + groupItems.length + '개 문항</span></div><div class="inline-actions"><button class="button button-small" data-add-question="' + groupIndex + '">문항 추가</button><button class="button button-small button-ghost" data-move-group="up" data-group-index="' + groupIndex + '" ' + (groupIndex === 0 ? "disabled" : "") + '>주제 위로</button><button class="button button-small button-ghost" data-move-group="down" data-group-index="' + groupIndex + '" ' + (groupIndex === groups.length - 1 ? "disabled" : "") + '>주제 아래로</button></div></div><ol class="question-list">' + questionList + "</ol></section>";
+        return '<section class="question-group-card"><div class="question-group-header"><div><span class="group-order-label">주제 ' + (groupIndex + 1) + '</span><h3>' + escapeHtml(group.name) + '</h3><span>' + groupItems.length + '개 문항</span></div><div class="inline-actions"><button class="button button-small button-ghost" data-edit-group="' + groupIndex + '">주제 수정</button><button class="button button-small button-danger" data-delete-group="' + groupIndex + '">주제 삭제</button><button class="button button-small" data-add-question="' + groupIndex + '">문항 추가</button><button class="button button-small button-ghost" data-move-group="up" data-group-index="' + groupIndex + '" ' + (groupIndex === 0 ? "disabled" : "") + '>주제 위로</button><button class="button button-small button-ghost" data-move-group="down" data-group-index="' + groupIndex + '" ' + (groupIndex === groups.length - 1 ? "disabled" : "") + '>주제 아래로</button></div></div><ol class="question-list">' + questionList + "</ol></section>";
       }).join("") || '<div class="empty-cell">등록된 주제가 없습니다. 주제를 추가해 주세요.</div>';
     }
 
     const originalIds = new Set(questions.map(function (question) { return question.id; }));
+    const originalGroupIds = new Set(groups.filter(function (group) { return group.id; }).map(function (group) { return group.id; }));
     document.querySelector("#add-group").addEventListener("click", function () {
+      editingGroupIndex = null;
       groupForm.reset();
       groupForm.elements.name.setCustomValidity("");
+      document.querySelector("#group-dialog-title").textContent = "주제 추가";
       groupDialog.showModal();
     });
-    document.querySelector("#group-cancel").addEventListener("click", function () { groupDialog.close(); });
+    document.querySelector("#group-cancel").addEventListener("click", function () {
+      editingGroupIndex = null;
+      groupDialog.close();
+    });
     groupForm.elements.name.addEventListener("input", function () { groupForm.elements.name.setCustomValidity(""); });
     groupForm.addEventListener("submit", function (event) {
       event.preventDefault();
       const name = groupForm.elements.name.value.trim();
-      const duplicate = groups.some(function (group) { return normalizedGroupName(group.name) === normalizedGroupName(name); });
+      const duplicate = groups.some(function (group, groupIndex) {
+        return groupIndex !== editingGroupIndex && normalizedGroupName(group.name) === normalizedGroupName(name);
+      });
       if (duplicate) {
         groupForm.elements.name.setCustomValidity("같은 이름의 주제가 이미 있습니다.");
         groupForm.elements.name.reportValidity();
         return;
       }
-      groups.push({ id: null, name: name, displayOrder: groups.length + 1 });
+      if (editingGroupIndex === null) {
+        groups.push({ id: null, name: name, displayOrder: groups.length + 1 });
+      } else {
+        const group = groups[editingGroupIndex];
+        const previousName = group.name;
+        group.name = name;
+        questions.forEach(function (question) {
+          if (normalizedGroupName(question.groupName) === normalizedGroupName(previousName)) question.groupName = name;
+        });
+      }
       groupDialog.close();
+      editingGroupIndex = null;
       render();
     });
 
     document.querySelector("#question-cancel").addEventListener("click", function () { questionDialog.close(); });
     list.addEventListener("click", function (event) {
       const add = event.target.dataset.addQuestion;
+      const editGroup = event.target.dataset.editGroup;
+      const deleteGroup = event.target.dataset.deleteGroup;
       const edit = event.target.dataset.editQuestion;
       const remove = event.target.dataset.deleteQuestion;
       const move = event.target.dataset.move;
       const moveGroup = event.target.dataset.moveGroup;
       const index = Number(event.target.dataset.index);
+      if (editGroup !== undefined) {
+        editingGroupIndex = Number(editGroup);
+        groupForm.reset();
+        groupForm.elements.name.setCustomValidity("");
+        groupForm.elements.name.value = groups[editingGroupIndex].name;
+        document.querySelector("#group-dialog-title").textContent = "주제 수정";
+        groupDialog.showModal();
+      }
+      if (deleteGroup !== undefined) {
+        const groupIndex = Number(deleteGroup);
+        const group = groups[groupIndex];
+        if (confirm("'" + group.name + "' 주제를 삭제할까요?")) {
+          const hasQuestions = questions.some(function (question) {
+            return normalizedGroupName(question.groupName) === normalizedGroupName(group.name);
+          });
+          if (hasQuestions) {
+            alert("문항을 다른 주제로 이동하거나 먼저 삭제해 주세요");
+          } else {
+            groups.splice(groupIndex, 1);
+            render();
+          }
+        }
+      }
       if (add !== undefined) {
         const group = groups[Number(add)];
         activeGroupName = group.name;
@@ -1165,8 +1200,11 @@
       saveButton.disabled = true;
       const currentIds = new Set(questions.filter(function (question) { return question.id; }).map(function (question) { return question.id; }));
       const removedIds = Array.from(originalIds).filter(function (id) { return !currentIds.has(id); });
+      const currentGroupIds = new Set(groups.filter(function (group) { return group.id; }).map(function (group) { return group.id; }));
+      const removedGroupIds = Array.from(originalGroupIds).filter(function (id) { return !currentGroupIds.has(id); });
       try {
         normalizeSettingsOrder();
+        if (removedGroupIds.length) throwIfError(await requireDb().from("survey_question_groups").delete().in("id", removedGroupIds));
         for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
           const group = groups[groupIndex];
           const values = { name: group.name, display_order: group.displayOrder };
@@ -1191,7 +1229,8 @@
       } catch (error) {
         console.error(error);
         saveButton.disabled = false;
-        setMessage(document.querySelector("#settings-message"), "만족도 문항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
+        const duplicateGroup = error && error.code === "23505";
+        setMessage(document.querySelector("#settings-message"), duplicateGroup ? "같은 이름의 주제가 이미 있습니다." : "만족도 문항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
         return;
       }
       setMessage(document.querySelector("#settings-message"), "변경사항을 저장했습니다. 이후 새로 생성하는 교육부터 적용됩니다.", "success");
