@@ -603,6 +603,8 @@ tbody tr:hover { background: var(--primary-soft); }
 .survey-share-heading { margin-bottom: 15px; }
 .survey-share-heading h3 { margin: 0; }
 .survey-share-heading p { margin: 4px 0 0; color: var(--text-muted); }
+.survey-share-layout { display: grid; grid-template-columns: minmax(0, 1fr) 238px; gap: 24px; align-items: start; }
+.survey-link-panel { min-width: 0; }
 .survey-link-row { display: flex; gap: 10px; align-items: flex-end; }
 .survey-link-field { display: grid; flex: 1; gap: 7px; min-width: 0; }
 .survey-link-field input { width: 100%; min-width: 0; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; }
@@ -611,6 +613,12 @@ tbody tr:hover { background: var(--primary-soft); }
 .survey-share-meta { margin-top: 18px; }
 .survey-share-meta > p { margin: 0 0 12px; }
 .survey-share-meta .helper { margin: 10px 0 0; }
+.survey-qr-panel { display: grid; justify-items: center; gap: 10px; min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 11px; background: #fff; }
+.survey-qr-panel h4 { width: 100%; margin: 0; color: var(--primary); text-align: center; }
+.survey-qr-frame { display: grid; width: 210px; max-width: 100%; aspect-ratio: 1; place-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.survey-qr-frame canvas { display: block; width: 100%; height: 100%; background: #fff; image-rendering: pixelated; }
+.survey-qr-frame .helper { margin: 0; padding: 16px; text-align: center; }
+.survey-qr-panel .button { width: 100%; }
 .survey-results-content { padding-top: 26px; border-top: 1px solid var(--line); }
 .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .survey-result-grid { grid-template-columns: 1fr; }
@@ -865,6 +873,8 @@ dialog::backdrop { background: rgba(4, 3, 22, .5); }
   .meta-grid { grid-template-columns: repeat(2, 1fr); }
   .result-grid { grid-template-columns: 1fr; }
   .overall-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .survey-share-layout { grid-template-columns: 1fr; }
+  .survey-qr-panel { width: min(100%, 280px); justify-self: center; }
   .applicant-management-table { min-width: 1900px; table-layout: fixed; }
   .applicant-management-table th,
   .applicant-management-table td { padding: 7px 8px; font-size: 11px; }
