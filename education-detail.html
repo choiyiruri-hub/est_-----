@@ -9,7 +9,7 @@
   <main class="page-shell">
     <div class="page-heading">
       <div><a class="table-link" href="index.html">← 교육 목록</a><h1 id="detail-title" style="margin-top:8px">교육 상세</h1><p>신청자와 연락, 참석 예정, 출석, 만족도 운영 현황을 관리합니다.</p></div>
-      <div class="heading-actions"><a class="button button-ghost" data-course-link="education-form.html">교육 정보 수정</a><a class="button button-ghost" data-course-link="apply.html" target="_blank">신청 페이지 보기</a><button id="copy-apply-link" class="button">신청 링크 복사</button></div>
+      <div class="heading-actions"><a class="button button-ghost" data-course-link="education-form.html">교육 정보 수정</a><a id="open-apply-link" class="button button-ghost" target="_blank" rel="noopener" aria-disabled="true">신청 페이지 보기</a><button id="copy-apply-link" class="button" type="button" disabled>신청 링크 복사</button></div>
     </div>
     <div id="detail-message" role="status" hidden></div>
     <section class="card"><div id="detail-meta" class="meta-grid"></div></section>
@@ -20,6 +20,26 @@
     </div>
     <section id="applicants-panel" class="card tab-panel" role="tabpanel">
       <div class="card-header"><div><h2>신청자 관리</h2><p>신청 정보와 연락 상태, 참석 예정 여부를 한 화면에서 관리합니다.</p></div><div class="toolbar"><button id="download-selected" class="button button-ghost">선택 다운로드</button><button id="download-all" class="button button-secondary">전체 다운로드</button></div></div>
+      <details class="application-share-card" open>
+        <summary><span>교육 신청 공유</span><small>신청 링크와 QR</small></summary>
+        <div class="application-share-content">
+          <div class="survey-share-layout">
+            <div class="survey-link-panel">
+              <div class="survey-link-row">
+                <label class="survey-link-field"><span class="field-label">교육 신청 링크</span><input id="application-link" type="url" readonly aria-label="교육 신청 링크"></label>
+                <div class="survey-link-actions"><button id="copy-application-link" class="button button-ghost" type="button" disabled>링크 복사</button><button id="open-application-link" class="button button-secondary" type="button" disabled>신청 페이지 열기</button></div>
+              </div>
+              <div id="application-copy-message" role="status" aria-live="polite" hidden></div>
+              <p class="helper application-share-helper">신청 마감 후에도 링크와 QR은 유지되며, 신청 페이지에서 기존 마감 안내가 표시됩니다.</p>
+            </div>
+            <section class="survey-qr-panel" aria-labelledby="application-qr-title">
+              <h4 id="application-qr-title">교육 신청 QR</h4>
+              <div class="survey-qr-frame"><canvas id="application-qr-canvas" role="img" hidden></canvas><p id="application-qr-message" class="helper" role="status">QR을 준비하고 있습니다.</p></div>
+              <button id="download-application-qr" class="button button-ghost" type="button" disabled>QR 이미지 저장</button>
+            </section>
+          </div>
+        </div>
+      </details>
       <div id="contact-summary" class="summary-grid" aria-label="연락 현황 요약"></div>
       <p class="helper applicant-table-guide">모바일에서는 아래 이동 막대를 좌우로 움직여 표 전체를 확인할 수 있습니다.</p>
       <div id="applicant-table-scroll-top" class="applicant-table-scroll-top" aria-label="신청자 표 좌우 이동" tabindex="0"><div></div></div>

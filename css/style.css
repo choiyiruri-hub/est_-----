@@ -619,6 +619,13 @@ tbody tr:hover { background: var(--primary-soft); }
 .survey-qr-frame canvas { display: block; width: 100%; height: 100%; background: #fff; image-rendering: pixelated; }
 .survey-qr-frame .helper { margin: 0; padding: 16px; text-align: center; }
 .survey-qr-panel .button { width: 100%; }
+.application-share-card { margin-bottom: 14px; border: 1px solid var(--line); border-radius: 11px; background: var(--background); }
+.application-share-card > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; color: var(--primary); font-weight: 800; cursor: pointer; }
+.application-share-card > summary small { color: var(--text-muted); font-size: 11px; font-weight: 650; }
+.application-share-content { padding: 16px; border-top: 1px solid var(--line); }
+.application-share-card .notice { margin: 12px 0 0; }
+.application-share-helper { margin: 12px 0 0; }
+.heading-actions a[aria-disabled="true"] { pointer-events: none; opacity: .55; }
 .survey-results-content { padding-top: 26px; border-top: 1px solid var(--line); }
 .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .survey-result-grid { grid-template-columns: 1fr; }

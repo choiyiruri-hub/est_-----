@@ -217,13 +217,18 @@
   }
 
   function param(name) { return new URLSearchParams(location.search).get(name); }
-  const SURVEY_PUBLIC_ORIGIN = "https://khpchu.vercel.app";
+  const PUBLIC_SITE_ORIGIN = "https://khpchu.vercel.app";
   function buildSurveyPublicUrl(courseId) {
     const id = String(courseId == null ? "" : courseId).trim();
     if (!id || id.length > 200 || !/^[A-Za-z0-9_-]+$/.test(id)) return "";
-    return SURVEY_PUBLIC_ORIGIN + "/survey.html?id=" + encodeURIComponent(id);
+    return PUBLIC_SITE_ORIGIN + "/survey.html?id=" + encodeURIComponent(id);
   }
-  function renderSurveyQr(canvas, url) {
+  function buildApplicationPublicUrl(courseId) {
+    const id = String(courseId == null ? "" : courseId).trim();
+    if (!id || id.length > 200 || !/^[A-Za-z0-9_-]+$/.test(id)) return "";
+    return PUBLIC_SITE_ORIGIN + "/apply.html?id=" + encodeURIComponent(id);
+  }
+  function renderQr(canvas, url, label) {
     if (!canvas || typeof canvas.getContext !== "function") throw new Error("QR canvas is unavailable");
     if (typeof qrcode !== "function") throw new Error("QR generator is unavailable");
     const qr = qrcode(0, "H");
@@ -250,21 +255,25 @@
     }
     canvas.dataset.qrValue = url;
     canvas.dataset.qrErrorCorrection = "H";
-    canvas.setAttribute("aria-label", "만족도 조사 QR: " + url);
+    canvas.setAttribute("aria-label", label + ": " + url);
     return { url: url, moduleCount: moduleCount, quietZone: quietZone, imageSize: imageSize, errorCorrection: "H" };
   }
-  function surveyQrFileName(courseName) {
-    const safeName = String(courseName || "교육")
+  function renderSurveyQr(canvas, url) {
+    return renderQr(canvas, url, "만족도 조사 QR");
+  }
+  function renderApplicationQr(canvas, url) {
+    return renderQr(canvas, url, "교육 신청 QR");
+  }
+  function safeQrCourseName(courseName) {
+    return String(courseName || "교육")
       .replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_")
       .replace(/\s+/g, " ")
       .replace(/[. ]+$/g, "")
       .trim()
       .slice(0, 80) || "교육";
-    return safeName + "_만족도조사_QR.png";
   }
-  function downloadSurveyQrPng(canvas, url, courseName) {
+  function downloadQrPng(canvas, url, fileName) {
     if (!canvas || canvas.dataset.qrValue !== url) return Promise.reject(new Error("QR value mismatch"));
-    const fileName = surveyQrFileName(courseName);
     return new Promise(function (resolve, reject) {
       function downloadFromUrl(downloadUrl, shouldRevoke) {
         const link = document.createElement("a");
@@ -289,6 +298,12 @@
         }
       }
     });
+  }
+  function downloadSurveyQrPng(canvas, url, courseName) {
+    return downloadQrPng(canvas, url, safeQrCourseName(courseName) + "_만족도조사_QR.png");
+  }
+  function downloadApplicationQrPng(canvas, url, courseName) {
+    return downloadQrPng(canvas, url, safeQrCourseName(courseName) + "_교육신청_QR.png");
   }
   function selectedCourse(courses) {
     const id = param("id");
@@ -751,6 +766,7 @@
       return;
     }
     addCourseLinks(document, course);
+    const applicationUrl = buildApplicationPublicUrl(course.id);
     const surveyUrl = buildSurveyPublicUrl(course.id);
     document.querySelector("#detail-title").textContent = course.name;
     document.querySelector("#print-course-name").textContent = course.name;
@@ -830,14 +846,80 @@
       setMessage(document.querySelector("#survey-copy-message"), "교육 ID가 없어 만족도 조사 공유 기능을 사용할 수 없습니다.", "error");
     }
 
-    document.querySelector("#copy-apply-link").addEventListener("click", function () {
-      const url = new URL("apply.html?id=" + course.id, location.href).href;
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(url).then(function () { setMessage(document.querySelector("#detail-message"), "신청 링크를 복사했습니다.", "success"); });
-      } else {
-        setMessage(document.querySelector("#detail-message"), "신청 링크: " + url, "info");
+    const applicationLinkInput = document.querySelector("#application-link");
+    const copyApplyLinkButton = document.querySelector("#copy-apply-link");
+    const copyApplicationLinkButton = document.querySelector("#copy-application-link");
+    const openApplyLink = document.querySelector("#open-apply-link");
+    const openApplicationLinkButton = document.querySelector("#open-application-link");
+    const applicationQrCanvas = document.querySelector("#application-qr-canvas");
+    const applicationQrMessage = document.querySelector("#application-qr-message");
+    const downloadApplicationQrButton = document.querySelector("#download-application-qr");
+    applicationLinkInput.value = applicationUrl;
+    applicationLinkInput.title = applicationUrl;
+
+    async function copyApplicationLink() {
+      const shareMessage = document.querySelector("#application-copy-message");
+      if (!applicationUrl) {
+        setMessage(shareMessage, "교육 ID를 확인할 수 없어 신청 링크를 복사할 수 없습니다.", "error");
+        return;
       }
-    });
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(applicationUrl);
+        } else {
+          applicationLinkInput.focus();
+          applicationLinkInput.select();
+          applicationLinkInput.setSelectionRange(0, applicationLinkInput.value.length);
+          if (!document.execCommand("copy")) throw new Error("copy command failed");
+        }
+        setMessage(shareMessage, "신청 링크가 복사되었습니다.", "success");
+        setMessage(document.querySelector("#detail-message"), "신청 링크가 복사되었습니다.", "success");
+      } catch (error) {
+        setMessage(shareMessage, "신청 링크를 복사하지 못했습니다. 링크를 직접 선택해 복사해 주세요.", "error");
+      }
+    }
+    function openApplicationLink() {
+      if (!applicationUrl) return;
+      const opened = window.open(applicationUrl, "_blank", "noopener,noreferrer");
+      if (opened) opened.opener = null;
+    }
+    async function saveApplicationQrPng() {
+      try {
+        await downloadApplicationQrPng(applicationQrCanvas, applicationUrl, course.name);
+      } catch (error) {
+        applicationQrMessage.hidden = false;
+        applicationQrMessage.textContent = "QR 이미지를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+      }
+    }
+    copyApplyLinkButton.addEventListener("click", copyApplicationLink);
+    copyApplicationLinkButton.addEventListener("click", copyApplicationLink);
+    openApplicationLinkButton.addEventListener("click", openApplicationLink);
+    downloadApplicationQrButton.addEventListener("click", saveApplicationQrPng);
+
+    if (applicationUrl) {
+      copyApplyLinkButton.disabled = false;
+      copyApplicationLinkButton.disabled = false;
+      openApplyLink.href = applicationUrl;
+      openApplyLink.setAttribute("aria-disabled", "false");
+      openApplicationLinkButton.disabled = false;
+      try {
+        renderApplicationQr(applicationQrCanvas, applicationUrl);
+        applicationQrCanvas.hidden = false;
+        applicationQrMessage.hidden = true;
+        downloadApplicationQrButton.disabled = false;
+      } catch (error) {
+        console.error("교육 신청 QR 생성 실패", error);
+        applicationQrCanvas.hidden = true;
+        applicationQrMessage.hidden = false;
+        applicationQrMessage.textContent = "QR을 생성하지 못했습니다. 교육 신청 링크를 이용해 주세요.";
+      }
+    } else {
+      applicationLinkInput.placeholder = "교육 ID를 확인할 수 없습니다.";
+      applicationQrCanvas.hidden = true;
+      applicationQrMessage.hidden = false;
+      applicationQrMessage.textContent = "교육 ID가 없어 QR을 생성할 수 없습니다.";
+      setMessage(document.querySelector("#application-copy-message"), "교육 ID가 없어 교육 신청 공유 기능을 사용할 수 없습니다.", "error");
+    }
 
     function activateDetailTab(panelId) {
       const targetPanelId = panelId === "results-panel" ? "survey-panel" : panelId;
