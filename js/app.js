@@ -678,6 +678,7 @@
       return;
     }
     addCourseLinks(document, course);
+    const surveyUrl = new URL("survey.html?id=" + encodeURIComponent(course.id), location.href).href;
     document.querySelector("#detail-title").textContent = course.name;
     document.querySelector("#print-course-name").textContent = course.name;
     document.querySelector("#print-course-date").textContent = formatCourseDates(course);
@@ -687,7 +688,29 @@
       ["신청 마감", formatDeadlineDateTime(deadline(course))], ["교육 상태", badge(status(course))]
     ].map(function (item) { return '<div class="meta-item"><span>' + item[0] + "</span><strong>" + item[1] + "</strong></div>"; }).join("");
     document.querySelector("#survey-deadline").textContent = formatDateTime(surveyDeadline(course));
+    document.querySelector("#survey-link").value = surveyUrl;
+    document.querySelector("#survey-link").title = surveyUrl;
+    document.querySelector("#open-survey-link").href = surveyUrl;
     if (new Date() > surveyDeadline(course)) document.querySelector("#survey-period-state").innerHTML = badge("응답기간 종료");
+
+    async function copySurveyLink() {
+      const input = document.querySelector("#survey-link");
+      const message = document.querySelector("#survey-copy-message");
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(surveyUrl);
+        } else {
+          input.focus();
+          input.select();
+          input.setSelectionRange(0, input.value.length);
+          if (!document.execCommand("copy")) throw new Error("copy command failed");
+        }
+        setMessage(message, "링크가 복사되었습니다.", "success");
+      } catch (error) {
+        setMessage(message, "링크를 복사하지 못했습니다. 링크를 직접 선택해 복사해 주세요.", "error");
+      }
+    }
+    document.querySelector("#copy-survey-link").addEventListener("click", copySurveyLink);
 
     document.querySelector("#copy-apply-link").addEventListener("click", function () {
       const url = new URL("apply.html?id=" + course.id, location.href).href;
@@ -698,12 +721,18 @@
       }
     });
 
+    function activateDetailTab(panelId) {
+      const targetPanelId = panelId === "results-panel" ? "survey-panel" : panelId;
+      const targetButton = Array.from(document.querySelectorAll("[data-tab]")).find(function (button) { return button.dataset.tab === targetPanelId; });
+      if (!targetButton) return;
+      document.querySelectorAll("[data-tab]").forEach(function (item) { item.classList.toggle("active", item === targetButton); item.setAttribute("aria-selected", item === targetButton); });
+      document.querySelectorAll(".tab-panel").forEach(function (panel) { panel.hidden = panel.id !== targetPanelId; });
+    }
     document.querySelectorAll("[data-tab]").forEach(function (button) {
-      button.addEventListener("click", function () {
-        document.querySelectorAll("[data-tab]").forEach(function (item) { item.classList.toggle("active", item === button); item.setAttribute("aria-selected", item === button); });
-        document.querySelectorAll(".tab-panel").forEach(function (panel) { panel.hidden = panel.id !== button.dataset.tab; });
-      });
+      button.addEventListener("click", function () { activateDetailTab(button.dataset.tab); });
     });
+    const requestedTab = param("tab") || location.hash.replace(/^#/, "");
+    if (requestedTab) activateDetailTab(requestedTab);
 
     function applicantRow(applicant, index) {
       const surveyState = "익명 설문";

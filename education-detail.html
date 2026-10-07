@@ -17,7 +17,6 @@
       <button class="tab-button active" data-tab="applicants-panel" role="tab" aria-selected="true">신청자 관리</button>
       <button class="tab-button" data-tab="attendance-panel" role="tab" aria-selected="false">출석 관리</button>
       <button class="tab-button" data-tab="survey-panel" role="tab" aria-selected="false">만족도 관리</button>
-      <button class="tab-button" data-tab="results-panel" role="tab" aria-selected="false">만족도 결과</button>
     </div>
     <section id="applicants-panel" class="card tab-panel" role="tabpanel">
       <div class="card-header"><div><h2>신청자 관리</h2><p>신청 정보와 연락 상태, 참석 예정 여부를 한 화면에서 관리합니다.</p></div><div class="toolbar"><button id="download-selected" class="button button-ghost">선택 다운로드</button><button id="download-all" class="button button-secondary">전체 다운로드</button></div></div>
@@ -31,15 +30,23 @@
       <div class="table-wrap"><table><thead><tr><th><input id="attendance-select-all" type="checkbox" aria-label="출석 대상 전체 선택"></th><th>이름</th><th>소속</th><th>출석 상태</th></tr></thead><tbody id="attendance-body"></tbody></table></div>
     </section>
     <section id="survey-panel" class="card tab-panel" role="tabpanel" hidden>
-      <div class="card-header"><div><h2>만족도 관리</h2><p>QR 이미지를 누르면 수강생용 만족도 조사 화면으로 이동합니다.</p></div><div class="toolbar"><a class="button button-ghost" data-course-link="course-survey-settings.html">이 교육의 만족도 문항 설정</a><div id="survey-period-state"></div></div></div>
-      <div class="qr-layout"><a class="qr-link" data-course-link="survey.html" target="_blank" aria-label="만족도 조사 열기"><img src="assets/images/survey-qr.svg" alt="만족도 조사 Mock QR 플레이스홀더"></a><div><h3>응답 현황</h3><p>응답 마감: <strong id="survey-deadline"></strong></p><div id="survey-summary" class="summary-grid"></div><p class="helper">신청자 정보와 연결하지 않는 익명 설문이며 제출 건수를 기준으로 집계합니다.</p></div></div>
-    </section>
-    <section id="results-panel" class="card tab-panel" role="tabpanel" hidden>
-      <div class="card-header screen-results-header"><div><h2>만족도 결과</h2><p>전체 응답: <strong id="response-count"></strong></p></div><button id="print-survey-results" class="button button-secondary" type="button">인쇄/PDF 저장</button></div>
-      <header class="print-report-heading"><span>만족도 결과 보고서</span><h1 id="print-course-name"></h1><p>교육일 <strong id="print-course-date"></strong></p></header>
-      <section class="overall-stat-section" aria-labelledby="overall-stat-title"><h3 id="overall-stat-title">전체 통계</h3><div id="overall-results-summary" class="summary-grid overall-stat-grid"></div></section>
-      <div class="result-grid survey-result-grid"><div class="result-box question-score-report"><section class="overall-score-section"><h3>응답자별 분포</h3><div id="overall-score-chart"></div></section><section class="question-average-section"><h3>문항별 평균 점수</h3><div id="score-results"></div><details class="score-distribution-details"><summary>문항별 상세 분포 보기</summary><div id="score-distributions"></div></details></section></div><div class="result-box respondent-result-box"><h3>사람별 상세 응답</h3><select id="respondent-select" aria-label="응답자 선택"></select><div id="respondent-detail" style="margin-top:12px"></div></div></div>
-      <div class="result-box text-result-box" style="margin-top:18px"><h3>주관식 답변</h3><div id="text-results"></div></div>
+      <div class="card-header survey-management-header"><div><h2>만족도 관리</h2><p>설문 공유와 응답 결과를 한 화면에서 관리합니다.</p></div><div class="toolbar"><a class="button button-ghost" data-course-link="course-survey-settings.html">이 교육의 만족도 문항 설정</a><div id="survey-period-state"></div></div></div>
+      <section class="survey-share-section" aria-labelledby="survey-share-title">
+        <div class="survey-share-heading"><h3 id="survey-share-title">만족도 조사 공유</h3><p>수강생에게 아래 링크를 전달해 주세요.</p></div>
+        <div class="survey-link-row">
+          <label class="survey-link-field"><span class="field-label">만족도 조사 링크</span><input id="survey-link" type="url" readonly aria-label="만족도 조사 링크"></label>
+          <div class="survey-link-actions"><button id="copy-survey-link" class="button button-ghost" type="button">링크 복사</button><a id="open-survey-link" class="button button-secondary" data-course-link="survey.html" target="_blank" rel="noopener">설문 열기</a></div>
+        </div>
+        <div id="survey-copy-message" role="status" aria-live="polite" hidden></div>
+        <div class="survey-share-meta"><p>응답 마감: <strong id="survey-deadline"></strong></p><div id="survey-summary" class="summary-grid"></div><p class="helper">신청자 정보와 연결하지 않는 익명 설문이며 제출 건수를 기준으로 집계합니다.</p></div>
+      </section>
+      <section id="survey-results-content" class="survey-results-content" aria-labelledby="survey-results-title">
+        <div class="card-header screen-results-header"><div><h2 id="survey-results-title">만족도 결과</h2><p>전체 응답: <strong id="response-count"></strong></p></div><button id="print-survey-results" class="button button-secondary" type="button">인쇄/PDF 저장</button></div>
+        <header class="print-report-heading"><span>만족도 결과 보고서</span><h1 id="print-course-name"></h1><p>교육일 <strong id="print-course-date"></strong></p></header>
+        <section class="overall-stat-section" aria-labelledby="overall-stat-title"><h3 id="overall-stat-title">전체 통계</h3><div id="overall-results-summary" class="summary-grid overall-stat-grid"></div></section>
+        <div class="result-grid survey-result-grid"><div class="result-box question-score-report"><section class="overall-score-section"><h3>응답자별 분포</h3><div id="overall-score-chart"></div></section><section class="question-average-section"><h3>문항별 평균 점수</h3><div id="score-results"></div><details class="score-distribution-details"><summary>문항별 상세 분포 보기</summary><div id="score-distributions"></div></details></section></div><div class="result-box respondent-result-box"><h3>사람별 상세 응답</h3><select id="respondent-select" aria-label="응답자 선택"></select><div id="respondent-detail" style="margin-top:12px"></div></div></div>
+        <div class="result-box text-result-box" style="margin-top:18px"><h3>주관식 답변</h3><div id="text-results"></div></div>
+      </section>
     </section>
   </main>
   <dialog id="edit-dialog"><form id="edit-applicant-form" class="dialog-content"><h2>신청자 정보 수정</h2><input type="hidden" name="applicantId"><div class="stack"><label class="field"><span>이름</span><input name="name" required></label><label class="field"><span>전화번호</span><input name="phone" required></label><label class="field"><span>주민등록번호</span><input name="resident" required></label><label class="field"><span>소속</span><input name="organization" required></label></div><div class="form-actions"><button id="edit-cancel" class="button button-ghost" type="button">취소</button><button class="button" type="submit">저장</button></div></form></dialog>
