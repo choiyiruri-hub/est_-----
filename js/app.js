@@ -55,10 +55,42 @@
     return ordered;
   }
 
+  function normalizeCourseDates(values, fallbackDate) {
+    const source = Array.isArray(values) ? values : [];
+    const dates = source.concat(fallbackDate ? [fallbackDate] : []).filter(function (value) {
+      return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""));
+    }).map(String);
+    return Array.from(new Set(dates)).sort();
+  }
+
+  function shiftDateString(value, amount) {
+    const parts = String(value || "").split("-").map(Number);
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return "";
+    const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + amount));
+    return [date.getUTCFullYear(), String(date.getUTCMonth() + 1).padStart(2, "0"), String(date.getUTCDate()).padStart(2, "0")].join("-");
+  }
+
+  function automaticApplicationDeadline(dates) {
+    const firstDate = normalizeCourseDates(dates)[0];
+    return firstDate ? new Date(shiftDateString(firstDate, -1) + "T23:59:59+09:00") : null;
+  }
+
+  function courseFirstDate(course) {
+    return normalizeCourseDates(course && course.dates, course && course.date)[0] || "";
+  }
+
+  function courseLastDate(course) {
+    const dates = normalizeCourseDates(course && course.dates, course && course.date);
+    return dates[dates.length - 1] || "";
+  }
+
   function courseRow(course) {
+    const dates = normalizeCourseDates(course.dates, course.date);
     return {
       name: course.name,
-      course_date: course.date,
+      course_date: dates[0],
+      course_dates: dates,
+      application_deadline: course.applicationDeadline,
       start_time: course.startTime,
       end_time: course.endTime,
       place: course.place,
@@ -144,10 +176,13 @@
           attendanceIntent: applicant.attendance_intent || "미정"
         };
       });
+      const dates = normalizeCourseDates(row.course_dates, row.course_date);
       return {
         id: row.id,
         name: row.name,
-        date: row.course_date,
+        date: dates[0] || row.course_date,
+        dates: dates,
+        applicationDeadline: row.application_deadline || null,
         startTime: timeText(row.start_time),
         endTime: timeText(row.end_time),
         place: row.place,
@@ -192,16 +227,14 @@
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", "\"": "&quot;" }[char];
     });
   }
-  function dateTime(course, time) { return new Date(course.date + "T" + time + ":00"); }
+  function dateTime(course, time) { return new Date(courseLastDate(course) + "T" + time + ":00+09:00"); }
   function deadline(course) {
-    const date = new Date(course.date + "T17:00:00");
-    date.setDate(date.getDate() - 1);
-    return date;
+    if (course && course.applicationDeadline) return new Date(course.applicationDeadline);
+    const firstDate = courseFirstDate(course);
+    return new Date(shiftDateString(firstDate, -1) + "T17:00:00+09:00");
   }
   function surveyDeadline(course) {
-    const date = new Date(course.date + "T23:59:59");
-    date.setDate(date.getDate() + 2);
-    return date;
+    return new Date(shiftDateString(courseLastDate(course), 2) + "T23:59:59+09:00");
   }
   function status(course) {
     const now = new Date();
@@ -210,10 +243,23 @@
     return "신청 접수 중";
   }
   function formatDate(value) {
-    return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" }).format(new Date(value + "T00:00:00"));
+    return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" }).format(new Date(value + "T00:00:00+09:00"));
   }
   function formatDateTime(value) {
-    return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(value);
+    return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" }).format(value);
+  }
+  function formatDeadlineDateTime(value) {
+    return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: "Asia/Seoul" }).format(value);
+  }
+  function formatCourseDates(course) {
+    return normalizeCourseDates(course && course.dates, course && course.date).map(formatDate).join(", ");
+  }
+  function courseDatesTableHtml(course) {
+    const dates = normalizeCourseDates(course && course.dates, course && course.date);
+    const allDates = dates.join(", ");
+    if (dates.length <= 1) return escapeHtml(allDates || "-");
+    const compact = dates[0] + " 외 " + (dates.length - 1) + "일";
+    return '<span class="course-dates-full" title="' + escapeHtml(allDates) + '">' + escapeHtml(allDates) + '</span><span class="course-dates-compact" title="' + escapeHtml(allDates) + '" tabindex="0" aria-label="전체 교육일: ' + escapeHtml(allDates) + '">' + escapeHtml(compact) + "</span>";
   }
   function formatPhone(value) {
     const digits = String(value || "").replace(/\D/g, "").slice(0, 11);
@@ -283,7 +329,7 @@
         return '<tr data-href="education-detail.html?id=' + encodeURIComponent(course.id) + '" tabindex="0">' +
           '<td class="selection-cell"><input class="table-select course-check" type="checkbox" value="' + escapeHtml(course.id) + '" aria-label="' + escapeHtml(course.name) + ' 선택" ' + (selectedIds.has(course.id) ? "checked" : "") + "></td>" +
           '<td><a class="table-link" href="education-detail.html?id=' + encodeURIComponent(course.id) + '">' + escapeHtml(course.name) + "</a></td>" +
-          "<td>" + escapeHtml(course.date) + "</td><td>" + course.startTime + "–" + course.endTime + "</td><td>" + escapeHtml(course.instructorName || "-") + "</td>" +
+          "<td>" + courseDatesTableHtml(course) + "</td><td>" + course.startTime + "–" + course.endTime + "</td><td>" + escapeHtml(course.instructorName || "-") + "</td>" +
           "<td>" + escapeHtml(course.place) + "</td><td>" + course.capacity + "명</td><td>" + count.current + "명</td>" +
           '<td class="' + (count.over ? "text-danger" : "") + '">' + count.over + "명</td><td>" + count.attended + "명</td><td>" + count.survey + "명</td><td>" + badge(status(course)) + "</td></tr>";
       }).join("") || '<tr><td colspan="12" class="empty-cell">' + (courses.length ? "검색 결과가 없습니다." : "등록된 교육이 없습니다. 새 교육을 생성해 주세요.") + "</td></tr>";
@@ -354,6 +400,19 @@
     const posterInput = document.querySelector("#poster-file");
     const posterPreview = document.querySelector("#poster-preview");
     const posterPreviewImage = document.querySelector("#poster-preview-image");
+    const calendarGrid = document.querySelector("#calendar-grid");
+    const calendarMonthLabel = document.querySelector("#calendar-month-label");
+    const selectedDateList = document.querySelector("#selected-date-list");
+    const selectedDateCount = document.querySelector("#selected-date-count");
+    const originalDates = normalizeCourseDates(course && course.dates, course && course.date);
+    const selectedCourseDates = new Set(originalDates);
+    const todayParts = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).formatToParts(new Date());
+    const todayMap = {};
+    todayParts.forEach(function (part) { if (part.type !== "literal") todayMap[part.type] = part.value; });
+    const todayString = todayMap.year + "-" + todayMap.month + "-" + todayMap.day;
+    const initialCalendarDate = originalDates[0] || todayString;
+    let calendarYear = Number(initialCalendarDate.slice(0, 4));
+    let calendarMonth = Number(initialCalendarDate.slice(5, 7)) - 1;
 
     function populateTimeOptions(select, limit, step) {
       const fragment = document.createDocumentFragment();
@@ -369,6 +428,53 @@
     populateTimeOptions(form.elements.startMinute, 60, 10);
     populateTimeOptions(form.elements.endMinute, 60, 10);
 
+    function selectedDates() {
+      return Array.from(selectedCourseDates).sort();
+    }
+
+    function dateSelectionChanged() {
+      return selectedDates().join(",") !== originalDates.join(",");
+    }
+
+    function renderCalendar() {
+      calendarMonthLabel.textContent = calendarYear + "년 " + (calendarMonth + 1) + "월";
+      const firstWeekday = new Date(Date.UTC(calendarYear, calendarMonth, 1)).getUTCDay();
+      const daysInMonth = new Date(Date.UTC(calendarYear, calendarMonth + 1, 0)).getUTCDate();
+      let html = "";
+      for (let blank = 0; blank < firstWeekday; blank += 1) html += '<span class="calendar-day-empty" aria-hidden="true"></span>';
+      for (let day = 1; day <= daysInMonth; day += 1) {
+        const value = calendarYear + "-" + String(calendarMonth + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+        const isSelected = selectedCourseDates.has(value);
+        const classes = ["calendar-day"];
+        if (isSelected) classes.push("selected");
+        if (value === todayString) classes.push("today");
+        html += '<button class="' + classes.join(" ") + '" type="button" role="gridcell" data-calendar-date="' + value + '" aria-pressed="' + isSelected + '" aria-label="' + escapeHtml(formatDate(value)) + '">' + day + "</button>";
+      }
+      calendarGrid.innerHTML = html;
+    }
+
+    function renderSelectedDates() {
+      const dates = selectedDates();
+      form.elements.date.value = dates[0] || "";
+      selectedDateCount.textContent = dates.length + "일";
+      selectedDateList.innerHTML = dates.length ? dates.map(function (value) {
+        return '<span class="selected-date-chip"><span>' + escapeHtml(formatDate(value)) + '</span><button type="button" data-remove-date="' + value + '" aria-label="' + escapeHtml(formatDate(value)) + ' 선택 해제">×</button></span>';
+      }).join("") : '<span class="selected-date-empty">선택한 날짜가 없습니다.</span>';
+      updateDeadline();
+    }
+
+    function renderDateSelection() {
+      renderCalendar();
+      renderSelectedDates();
+    }
+
+    function moveCalendarMonth(amount) {
+      const next = new Date(Date.UTC(calendarYear, calendarMonth + amount, 1));
+      calendarYear = next.getUTCFullYear();
+      calendarMonth = next.getUTCMonth();
+      renderCalendar();
+    }
+
     function showPoster(source) {
       posterPreview.hidden = !source;
       if (source) posterPreviewImage.src = source;
@@ -378,7 +484,7 @@
     if (course) {
       title.textContent = "교육 정보 수정";
       submit.textContent = "변경사항 저장";
-      ["name", "date", "place", "capacity", "instructorName", "instructorBio", "description"].forEach(function (key) { form.elements[key].value = course[key] || ""; });
+      ["name", "place", "capacity", "instructorName", "instructorBio", "description"].forEach(function (key) { form.elements[key].value = course[key] || ""; });
       const startParts = String(course.startTime || "").split(":");
       const endParts = String(course.endTime || "").split(":");
       form.elements.startHour.value = startParts[0] || "";
@@ -408,8 +514,15 @@
     });
 
     function updateDeadline() {
-      if (!form.elements.date.value) { deadlineOutput.textContent = "교육일을 선택하면 자동 계산됩니다."; return; }
-      deadlineOutput.textContent = formatDateTime(deadline({ date: form.elements.date.value }));
+      const dates = selectedDates();
+      if (!dates.length) {
+        deadlineOutput.textContent = "교육일을 선택하면 자동 계산됩니다.";
+        deadlineOutput.removeAttribute("data-deadline");
+        return;
+      }
+      const nextDeadline = course && !dateSelectionChanged() ? deadline(course) : automaticApplicationDeadline(dates);
+      deadlineOutput.textContent = formatDeadlineDateTime(nextDeadline);
+      deadlineOutput.dataset.deadline = nextDeadline.toISOString();
     }
 
     function readPoster(file) {
@@ -421,10 +534,32 @@
       });
     }
 
-    form.elements.date.addEventListener("change", updateDeadline);
-    updateDeadline();
+    document.querySelector("#calendar-previous").addEventListener("click", function () { moveCalendarMonth(-1); });
+    document.querySelector("#calendar-next").addEventListener("click", function () { moveCalendarMonth(1); });
+    calendarGrid.addEventListener("click", function (event) {
+      const button = event.target.closest("[data-calendar-date]");
+      if (!button) return;
+      const value = button.dataset.calendarDate;
+      if (selectedCourseDates.has(value)) selectedCourseDates.delete(value);
+      else selectedCourseDates.add(value);
+      renderDateSelection();
+    });
+    selectedDateList.addEventListener("click", function (event) {
+      const button = event.target.closest("[data-remove-date]");
+      if (!button) return;
+      selectedCourseDates.delete(button.dataset.removeDate);
+      renderDateSelection();
+    });
+    renderDateSelection();
     form.addEventListener("submit", async function (event) {
       event.preventDefault();
+      const dates = selectedDates();
+      if (!dates.length) {
+        setMessage(document.querySelector("#form-message"), "교육 날짜를 1개 이상 선택해 주세요.", "error");
+        document.querySelector("#course-date-field").scrollIntoView({ behavior: "smooth", block: "center" });
+        calendarGrid.focus();
+        return;
+      }
       const startTime = form.elements.startHour.value + ":" + form.elements.startMinute.value;
       const endTime = form.elements.endHour.value + ":" + form.elements.endMinute.value;
       if (endTime <= startTime) {
@@ -444,8 +579,9 @@
         }
       }
       delete values.posterFile;
+      const nextDeadline = course && !dateSelectionChanged() ? deadline(course) : automaticApplicationDeadline(dates);
       const courseValues = {
-        name: values.name.trim(), date: values.date, startTime: startTime, endTime: endTime,
+        name: values.name.trim(), date: dates[0], dates: dates, applicationDeadline: nextDeadline.toISOString(), startTime: startTime, endTime: endTime,
         place: values.place.trim(), capacity: Number(values.capacity), instructorName: values.instructorName.trim(),
         instructorBio: values.instructorBio.trim(), description: values.description.trim(), poster: poster
       };
@@ -509,11 +645,11 @@
     addCourseLinks(document, course);
     document.querySelector("#detail-title").textContent = course.name;
     document.querySelector("#print-course-name").textContent = course.name;
-    document.querySelector("#print-course-date").textContent = formatDate(course.date);
+    document.querySelector("#print-course-date").textContent = formatCourseDates(course);
     document.querySelector("#detail-meta").innerHTML = [
-      ["교육일", formatDate(course.date)], ["교육시간", course.startTime + "–" + course.endTime], ["장소", course.place],
+      ["교육일", formatCourseDates(course)], ["교육시간", course.startTime + "–" + course.endTime], ["장소", course.place],
       ["정원", course.capacity + "명"], ["신청 인원", '<span id="current-count"></span>'], ["초과 인원", '<span id="over-count"></span>'],
-      ["신청 마감", formatDateTime(deadline(course))], ["교육 상태", badge(status(course))]
+      ["신청 마감", formatDeadlineDateTime(deadline(course))], ["교육 상태", badge(status(course))]
     ].map(function (item) { return '<div class="meta-item"><span>' + item[0] + "</span><strong>" + item[1] + "</strong></div>"; }).join("");
     document.querySelector("#survey-deadline").textContent = formatDateTime(surveyDeadline(course));
     if (new Date() > surveyDeadline(course)) document.querySelector("#survey-period-state").innerHTML = badge("응답기간 종료");
@@ -914,7 +1050,7 @@
       return;
     }
     document.querySelector("#public-course-title").textContent = course.name;
-    document.querySelector("#public-course-meta").innerHTML = '<div><span>교육일</span><strong>' + formatDate(course.date) + '</strong></div><div><span>시간</span><strong>' + course.startTime + "–" + course.endTime + '</strong></div><div><span>장소</span><strong>' + escapeHtml(course.place) + '</strong></div><div><span>신청 마감</span><strong>' + formatDateTime(deadline(course)) + "</strong></div>";
+    document.querySelector("#public-course-meta").innerHTML = '<div><span>교육일</span><strong>' + escapeHtml(formatCourseDates(course)) + '</strong></div><div><span>시간</span><strong>' + course.startTime + "–" + course.endTime + '</strong></div><div><span>장소</span><strong>' + escapeHtml(course.place) + '</strong></div><div><span>신청 마감</span><strong>' + formatDeadlineDateTime(deadline(course)) + "</strong></div>";
     const courseInfo = document.querySelector("#public-course-info");
     const poster = typeof course.poster === "string" && /^(data:image\/|https?:\/\/)/.test(course.poster) ? course.poster : "";
     const hasCourseInfo = poster || course.instructorName || course.instructorBio || course.description;
