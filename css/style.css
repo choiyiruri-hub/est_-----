@@ -287,6 +287,11 @@ th, td { padding: 14px 15px; border-bottom: 1px solid var(--line); text-align: l
 th { background: var(--primary-soft); color: var(--primary); font-size: 13px; font-weight: 800; letter-spacing: .01em; }
 .table-heading-action { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 160px; }
 .contact-note-input { min-width: 200px; }
+.applicant-table-guide { margin: -6px 0 10px; }
+.applicant-table-wrap { overscroll-behavior-inline: contain; }
+.applicant-management-table { min-width: 2100px; }
+.applicant-status-select { min-width: 112px; }
+.attendance-intent-select { min-width: 92px; border-color: #aebdcd; font-weight: 750; }
 .selection-cell { width: 48px; padding-right: 8px; padding-left: 8px; text-align: center; }
 .table-select { display: inline-block; width: 17px; height: 17px; margin: 0; vertical-align: middle; cursor: pointer; }
 tbody tr:last-child td { border-bottom: 0; }
@@ -297,6 +302,13 @@ tbody tr:hover { background: var(--primary-soft); }
 .empty-cell { padding: 48px 20px; color: var(--text-muted); text-align: center; }
 .row-cancelled { color: #7e8795; background: #f6f7f9; }
 .row-cancelled strong { text-decoration: line-through; }
+.row-not-attending td { background: #eceff2; color: #59626e; }
+.row-not-attending:hover td { background: #e4e8ec; }
+.row-not-attending .attendance-intent-select { border-color: #9aa3ad; background: #fff; color: #5e2930; }
+.row-not-attending .badge,
+.row-not-attending button,
+.row-not-attending input,
+.row-not-attending select { opacity: 1; }
 .text-danger { color: var(--danger); font-weight: 800; }
 
 .badge {
@@ -654,6 +666,8 @@ dialog::backdrop { background: rgba(4, 3, 22, .5); }
   .page-heading .heading-actions, .toolbar { width: 100%; }
   .page-heading .button, .toolbar .button, .search-box { flex: 1; min-width: 100%; }
   .card, .public-card { padding: 20px; border-radius: 13px; }
+  .applicant-table-wrap { margin-right: -20px; margin-left: -20px; border-right: 0; border-left: 0; border-radius: 0; }
+  .applicant-table-guide { margin-top: -4px; }
   .card-header { align-items: flex-start; flex-direction: column; }
   .partner-logos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; padding: 14px 16px; }
   .partner-logo { padding: 0; }

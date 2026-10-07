@@ -140,7 +140,8 @@
           callStatus: applicant.call_status,
           smsStatus: applicant.sms_status,
           attendance: applicant.attendance_status,
-          contactNote: applicant.contact_note || ""
+          contactNote: applicant.contact_note || "",
+          attendanceIntent: applicant.attendance_intent || "미정"
         };
       });
       return {
@@ -535,20 +536,21 @@
 
     function applicantRow(applicant, index) {
       const surveyState = "익명 설문";
-      return '<tr class="' + (applicant.status === "취소" ? "row-cancelled" : "") + '">' +
+      const rowClasses = [];
+      if (applicant.status === "취소") rowClasses.push("row-cancelled");
+      if (applicant.attendanceIntent === "불참") rowClasses.push("row-not-attending");
+      return '<tr class="' + rowClasses.join(" ") + '" data-applicant-row="' + escapeHtml(applicant.id) + '">' +
         '<td><input type="checkbox" class="applicant-check" value="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 선택"></td>' +
         '<td><span class="applicant-number">' + (index + 1) + '.</span><strong>' + escapeHtml(applicant.name) + "</strong> " + (applicant.duplicate ? badge("중복 신청") : "") + "</td>" +
         "<td>" + escapeHtml(applicant.phone) + "</td><td>" + escapeHtml(applicant.email || "-") + "</td><td>" + escapeHtml(applicant.resident) + "</td><td>" + escapeHtml(applicant.organization) + "</td>" +
         "<td>" + (applicant.agreed ? "동의" : "미동의") + "</td><td>" + escapeHtml(applicant.appliedAt) + "</td><td>" + badge(applicant.applyType) + "</td>" +
-        "<td>" + badge(applicant.status) + "</td><td>" + badge(applicant.callStatus) + "</td><td>" + badge(applicant.smsStatus) + "</td><td>" + badge(applicant.attendance) + "</td><td>" + badge(surveyState) + "</td>" +
+        "<td>" + badge(applicant.status) + "</td>" +
+        '<td><select class="applicant-status-select" data-call="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 통화 상태"><option>미통화</option><option>부재</option><option>통화완료</option></select></td>' +
+        '<td><select class="applicant-status-select" data-sms="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 문자 상태"><option>미발송</option><option>발송완료</option></select></td>' +
+        '<td><input class="contact-note-input" data-contact-note="' + applicant.id + '" value="' + escapeHtml(applicant.contactNote || "") + '" maxlength="200" placeholder="메모 입력" aria-label="' + escapeHtml(applicant.name) + ' 비고"></td>' +
+        '<td><select class="attendance-intent-select" data-attendance-intent="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 참석 예정 상태"><option>미정</option><option>참석</option><option>불참</option></select></td>' +
+        "<td>" + badge(applicant.attendance) + "</td><td>" + badge(surveyState) + "</td>" +
         '<td><div class="inline-actions applicant-actions"><button class="button button-small button-ghost" data-edit="' + applicant.id + '">수정</button><button class="button button-small ' + (applicant.status === "취소" ? "button-secondary" : "button-danger") + '" data-toggle="' + applicant.id + '">' + (applicant.status === "취소" ? "복구" : "취소") + "</button></div></td></tr>";
-    }
-
-    function contactRow(applicant) {
-      return '<tr><td><input type="checkbox" class="contact-check" value="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 선택"></td><td>' + escapeHtml(applicant.name) + "</td><td>" + escapeHtml(applicant.phone) + "</td>" +
-        '<td><select data-call="' + applicant.id + '"><option>미통화</option><option>부재</option><option>통화완료</option></select></td>' +
-        '<td><select data-sms="' + applicant.id + '"><option>미발송</option><option>발송완료</option></select></td>' +
-        '<td><input class="contact-note-input" data-contact-note="' + applicant.id + '" value="' + escapeHtml(applicant.contactNote || "") + '" maxlength="200" placeholder="메모 입력" aria-label="' + escapeHtml(applicant.name) + ' 비고"></td></tr>';
     }
     function attendanceRow(applicant) {
       return '<tr><td><input type="checkbox" class="attendance-check" value="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 선택"></td><td>' + escapeHtml(applicant.name) + "</td><td>" + escapeHtml(applicant.organization) + "</td>" +
@@ -559,20 +561,20 @@
       document.querySelector("#current-count").textContent = count.current + "명";
       document.querySelector("#over-count").textContent = count.over + "명";
       document.querySelector("#over-count").classList.toggle("text-danger", count.over > 0);
-      document.querySelector("#applicant-body").innerHTML = course.applicants.map(applicantRow).join("") || '<tr><td colspan="15" class="empty-cell">신청자가 없습니다.</td></tr>';
+      document.querySelector("#applicant-body").innerHTML = course.applicants.map(applicantRow).join("") || '<tr><td colspan="17" class="empty-cell">신청자가 없습니다.</td></tr>';
       const active = activeApplicants(course);
-      document.querySelector("#contact-body").innerHTML = active.map(contactRow).join("") || '<tr><td colspan="6" class="empty-cell">연락 대상이 없습니다.</td></tr>';
       document.querySelector("#attendance-body").innerHTML = active.map(attendanceRow).join("") || '<tr><td colspan="4" class="empty-cell">출석 대상이 없습니다.</td></tr>';
-      ["contact-select-all", "attendance-select-all"].forEach(function (id) {
+      ["select-all", "attendance-select-all"].forEach(function (id) {
         const box = document.querySelector("#" + id);
         box.checked = false;
         box.indeterminate = false;
-        box.disabled = !active.length;
+        box.disabled = id === "select-all" ? !course.applicants.length : !active.length;
       });
       document.querySelector("#mark-selected-sms-sent").disabled = true;
       document.querySelector("#mark-selected-attended").disabled = true;
       document.querySelectorAll("[data-call]").forEach(function (select) { const item = course.applicants.find(function (a) { return a.id === select.dataset.call; }); select.value = item.callStatus; });
       document.querySelectorAll("[data-sms]").forEach(function (select) { const item = course.applicants.find(function (a) { return a.id === select.dataset.sms; }); select.value = item.smsStatus; });
+      document.querySelectorAll("[data-attendance-intent]").forEach(function (select) { const item = course.applicants.find(function (a) { return a.id === select.dataset.attendanceIntent; }); select.value = item.attendanceIntent; });
       document.querySelectorAll("[data-attendance]").forEach(function (select) { const item = course.applicants.find(function (a) { return a.id === select.dataset.attendance; }); select.value = item.attendance; });
       updateSummaries();
       renderSurveyResults();
@@ -720,8 +722,6 @@
       }, { once: true });
       window.print();
     });
-    document.querySelector("#select-all").addEventListener("change", function (event) { document.querySelectorAll(".applicant-check").forEach(function (box) { box.checked = event.target.checked; }); });
-
     function syncBulkSelection(checkSelector, selectAllId, actionButtonId) {
       const boxes = Array.from(document.querySelectorAll(checkSelector));
       const selectedCount = boxes.filter(function (box) { return box.checked; }).length;
@@ -734,24 +734,25 @@
       document.querySelectorAll(checkSelector).forEach(function (box) { box.checked = checked; });
       syncBulkSelection(checkSelector, selectAllId, actionButtonId);
     }
-    document.querySelector("#contact-select-all").addEventListener("change", function (event) {
-      toggleBulkSelection(".contact-check", "contact-select-all", "mark-selected-sms-sent", event.target.checked);
+    document.querySelector("#select-all").addEventListener("change", function (event) {
+      toggleBulkSelection(".applicant-check", "select-all", "mark-selected-sms-sent", event.target.checked);
     });
     document.querySelector("#attendance-select-all").addEventListener("change", function (event) {
       toggleBulkSelection(".attendance-check", "attendance-select-all", "mark-selected-attended", event.target.checked);
     });
-    document.querySelector("#contact-body").addEventListener("change", function (event) {
-      changeStatus(event);
-      saveContactNote(event);
-      if (event.target.classList.contains("contact-check")) syncBulkSelection(".contact-check", "contact-select-all", "mark-selected-sms-sent");
+    document.querySelector("#applicant-body").addEventListener("change", function (event) {
+      if (event.target.dataset.call || event.target.dataset.sms) changeStatus(event);
+      if (event.target.dataset.contactNote) saveContactNote(event);
+      if (event.target.dataset.attendanceIntent) saveAttendanceIntent(event);
+      if (event.target.classList.contains("applicant-check")) syncBulkSelection(".applicant-check", "select-all", "mark-selected-sms-sent");
     });
     document.querySelector("#attendance-body").addEventListener("change", function (event) {
       changeStatus(event);
       if (event.target.classList.contains("attendance-check")) syncBulkSelection(".attendance-check", "attendance-select-all", "mark-selected-attended");
     });
     document.querySelector("#mark-selected-sms-sent").addEventListener("click", async function () {
-      const ids = Array.from(document.querySelectorAll(".contact-check:checked")).map(function (box) { return box.value; });
-      const selected = activeApplicants(course).filter(function (applicant) { return ids.includes(applicant.id); });
+      const ids = Array.from(document.querySelectorAll(".applicant-check:checked")).map(function (box) { return box.value; });
+      const selected = course.applicants.filter(function (applicant) { return ids.includes(applicant.id); });
       if (!selected.length) return;
       const result = await requireDb().from("applications").update({ sms_status: "발송완료" }).in("id", ids);
       if (result.error) {
@@ -806,6 +807,23 @@
       }
       item.contactNote = note;
       input.value = note;
+    }
+    async function saveAttendanceIntent(event) {
+      const select = event.target;
+      const id = select.dataset.attendanceIntent;
+      if (!id) return;
+      const item = course.applicants.find(function (applicant) { return applicant.id === id; });
+      const previous = item.attendanceIntent || "미정";
+      const next = select.value;
+      const result = await requireDb().from("applications").update({ attendance_intent: next }).eq("id", id).eq("course_id", course.id);
+      if (result.error) {
+        select.value = previous;
+        setMessage(document.querySelector("#detail-message"), "참석 예정 상태를 저장하지 못했습니다. Supabase SQL 적용 여부를 확인해 주세요.", "error");
+        return;
+      }
+      item.attendanceIntent = next;
+      const row = select.closest("tr");
+      if (row) row.classList.toggle("row-not-attending", next === "불참");
     }
     function download(applicants) {
       if (!applicants.length) { setMessage(document.querySelector("#detail-message"), "다운로드할 신청자를 선택해 주세요.", "error"); return; }
