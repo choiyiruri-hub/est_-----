@@ -316,8 +316,35 @@
     const search = document.querySelector("#course-search");
     const selectAll = document.querySelector("#select-all-courses");
     const deleteButton = document.querySelector("#delete-selected-courses");
+    const courseTableScrollTop = document.querySelector("#course-table-scroll-top");
+    const courseTableWrap = document.querySelector(".course-table-wrap");
+    const courseTableScrollSpacer = courseTableScrollTop && courseTableScrollTop.firstElementChild;
     const selectedIds = new Set();
     let visibleCourses = [];
+    let syncingCourseTableScroll = false;
+
+    function updateCourseTableScrollWidth() {
+      if (!courseTableScrollTop || !courseTableWrap || !courseTableScrollSpacer) return;
+      courseTableScrollSpacer.style.width = courseTableWrap.scrollWidth + "px";
+      courseTableScrollTop.scrollLeft = courseTableWrap.scrollLeft;
+    }
+
+    if (courseTableScrollTop && courseTableWrap && courseTableScrollSpacer) {
+      courseTableScrollTop.addEventListener("scroll", function () {
+        if (syncingCourseTableScroll) return;
+        syncingCourseTableScroll = true;
+        courseTableWrap.scrollLeft = courseTableScrollTop.scrollLeft;
+        syncingCourseTableScroll = false;
+      });
+      courseTableWrap.addEventListener("scroll", function () {
+        if (syncingCourseTableScroll) return;
+        syncingCourseTableScroll = true;
+        courseTableScrollTop.scrollLeft = courseTableWrap.scrollLeft;
+        syncingCourseTableScroll = false;
+      });
+      window.addEventListener("resize", updateCourseTableScrollWidth);
+      if (window.ResizeObserver) new ResizeObserver(updateCourseTableScrollWidth).observe(courseTableWrap);
+    }
 
     function updateSelectionControls() {
       const selectedVisible = visibleCourses.filter(function (course) { return selectedIds.has(course.id); }).length;
@@ -341,6 +368,7 @@
           '<td class="' + (count.over ? "text-danger" : "") + '">' + count.over + "명</td><td>" + count.attended + "명</td><td>" + count.survey + "명</td><td>" + badge(status(course)) + "</td></tr>";
       }).join("") || '<tr><td colspan="12" class="empty-cell">' + (courses.length ? "검색 결과가 없습니다." : "등록된 교육이 없습니다. 새 교육을 생성해 주세요.") + "</td></tr>";
       updateSelectionControls();
+      requestAnimationFrame(updateCourseTableScrollWidth);
     }
 
     search.addEventListener("input", function () { render(search.value); });
