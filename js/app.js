@@ -585,6 +585,32 @@
       document.querySelector("#attendance-summary").innerHTML = ["출석", "결석", "미확인"].map(function (state) { return '<div class="summary-card"><span>' + state + '</span><strong>' + active.filter(function (a) { return a.attendance === state; }).length + "명</strong></div>"; }).join("");
       document.querySelector("#survey-summary").innerHTML = '<div class="summary-card"><span>제출 건수</span><strong>' + course.responses.length + '건</strong></div>';
     }
+    function setupApplicantTableScroll() {
+      const topScroll = document.querySelector("#applicant-table-scroll-top");
+      const tableWrap = document.querySelector(".applicant-table-wrap");
+      const spacer = topScroll && topScroll.firstElementChild;
+      if (!topScroll || !tableWrap || !spacer) return;
+      let syncing = false;
+      function updateSpacerWidth() {
+        spacer.style.width = tableWrap.scrollWidth + "px";
+        topScroll.scrollLeft = tableWrap.scrollLeft;
+      }
+      topScroll.addEventListener("scroll", function () {
+        if (syncing) return;
+        syncing = true;
+        tableWrap.scrollLeft = topScroll.scrollLeft;
+        syncing = false;
+      });
+      tableWrap.addEventListener("scroll", function () {
+        if (syncing) return;
+        syncing = true;
+        topScroll.scrollLeft = tableWrap.scrollLeft;
+        syncing = false;
+      });
+      window.addEventListener("resize", updateSpacerWidth);
+      if (window.ResizeObserver) new ResizeObserver(updateSpacerWidth).observe(tableWrap);
+      requestAnimationFrame(updateSpacerWidth);
+    }
     function renderSurveyResults() {
       function scoreDistribution(label, values, isOverall, averageOverride) {
         const counts = [1, 2, 3, 4, 5].map(function (score) {
@@ -861,6 +887,7 @@
       setMessage(document.querySelector("#detail-message"), "선택한 만족도 응답을 삭제했습니다.", "success");
     });
     renderAll();
+    setupApplicantTableScroll();
   }
 
   async function initApply() {

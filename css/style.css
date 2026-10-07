@@ -287,11 +287,57 @@ th, td { padding: 14px 15px; border-bottom: 1px solid var(--line); text-align: l
 th { background: var(--primary-soft); color: var(--primary); font-size: 13px; font-weight: 800; letter-spacing: .01em; }
 .table-heading-action { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 160px; }
 .contact-note-input { min-width: 200px; }
-.applicant-table-guide { margin: -6px 0 10px; }
+.applicant-table-guide { display: none; margin: -6px 0 10px; }
+.applicant-table-scroll-top { display: none; }
 .applicant-table-wrap { overscroll-behavior-inline: contain; }
-.applicant-management-table { min-width: 2100px; }
-.applicant-status-select { min-width: 112px; }
-.attendance-intent-select { min-width: 92px; border-color: #aebdcd; font-weight: 750; }
+.applicant-management-table { table-layout: fixed; }
+.applicant-management-table th:nth-child(1), .applicant-management-table td:nth-child(1) { width: 2.5%; text-align: center; }
+.applicant-management-table th:nth-child(2), .applicant-management-table td:nth-child(2) { width: 6%; }
+.applicant-management-table th:nth-child(3), .applicant-management-table td:nth-child(3) { width: 6.5%; }
+.applicant-management-table th:nth-child(4), .applicant-management-table td:nth-child(4) { width: 8%; }
+.applicant-management-table th:nth-child(5), .applicant-management-table td:nth-child(5) { width: 7%; }
+.applicant-management-table th:nth-child(6), .applicant-management-table td:nth-child(6) { width: 5.5%; }
+.applicant-management-table th:nth-child(7), .applicant-management-table td:nth-child(7) { width: 4%; }
+.applicant-management-table th:nth-child(8), .applicant-management-table td:nth-child(8) { width: 7%; }
+.applicant-management-table th:nth-child(9), .applicant-management-table td:nth-child(9) { width: 5.5%; }
+.applicant-management-table th:nth-child(10), .applicant-management-table td:nth-child(10) { width: 4%; }
+.applicant-management-table th:nth-child(11), .applicant-management-table td:nth-child(11) { width: 5.5%; }
+.applicant-management-table th:nth-child(12), .applicant-management-table td:nth-child(12) { width: 7%; }
+.applicant-management-table th:nth-child(13), .applicant-management-table td:nth-child(13) { width: 10%; }
+.applicant-management-table th:nth-child(14), .applicant-management-table td:nth-child(14) { width: 5%; }
+.applicant-management-table th:nth-child(15), .applicant-management-table td:nth-child(15) { width: 4%; }
+.applicant-management-table th:nth-child(16), .applicant-management-table td:nth-child(16) { width: 4.5%; }
+.applicant-management-table th:nth-child(17), .applicant-management-table td:nth-child(17) { width: 8%; }
+.applicant-management-table thead th { position: sticky; z-index: 30; top: 0; box-shadow: 0 1px 0 var(--line); }
+.applicant-management-table tbody tr { height: 40px; }
+.applicant-management-table th,
+.applicant-management-table td { padding: 6px 5px; font-size: clamp(9px, .7vw, 11.5px); line-height: 1.3; }
+.applicant-management-table input[type="checkbox"] { width: 14px; height: 14px; margin: 0; }
+.applicant-management-table .badge { min-height: 21px; padding: 2px 5px; font-size: inherit; }
+.applicant-management-table .applicant-number { min-width: 18px; font-size: inherit; }
+.applicant-management-table .table-heading-action { min-width: 0; align-items: flex-start; flex-direction: column; gap: 3px; }
+.applicant-management-table .table-heading-action .button { min-height: 24px; padding: 2px 6px; font-size: 10px; }
+.applicant-management-table .applicant-status-select,
+.applicant-management-table .attendance-intent-select { width: auto; min-width: 0; min-height: 27px; padding: 3px 4px; border-radius: 6px; font-size: inherit; }
+.applicant-management-table .attendance-intent-select { border-color: #aebdcd; font-weight: 750; }
+.applicant-management-table .contact-note-input { width: 100%; min-width: 0; min-height: 28px; padding: 3px 6px; border-radius: 6px; font-size: inherit; }
+.applicant-management-table td:nth-child(13) { position: relative; }
+.applicant-management-table td:nth-child(13):focus-within { z-index: 20; }
+.applicant-management-table .contact-note-input:focus {
+  position: absolute;
+  z-index: 20;
+  top: 50%;
+  right: 5px;
+  width: min(560px, 44vw);
+  transform: translateY(-50%);
+  background: #fff;
+}
+.applicant-management-table .applicant-actions { min-width: 0; flex-wrap: nowrap; gap: 3px; }
+.applicant-management-table .applicant-actions .button { min-height: 25px; padding: 2px 6px; border-radius: 5px; font-size: 10px; }
+.applicant-management-table th:nth-child(2),
+.applicant-management-table td:nth-child(2),
+.applicant-management-table th:nth-child(3),
+.applicant-management-table td:nth-child(3) { white-space: nowrap; }
 .selection-cell { width: 48px; padding-right: 8px; padding-left: 8px; text-align: center; }
 .table-select { display: inline-block; width: 17px; height: 17px; margin: 0; vertical-align: middle; cursor: pointer; }
 tbody tr:last-child td { border-bottom: 0; }
@@ -397,6 +443,18 @@ tbody tr:hover { background: var(--primary-soft); }
 .overall-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 0; }
 .applicant-actions { flex-wrap: nowrap; min-width: max-content; }
 .applicant-number { display: inline-block; min-width: 24px; color: var(--text-muted); font-size: 13px; font-weight: 700; }
+
+@media (min-width: 901px) {
+  #applicants-panel {
+    width: calc(100vw - 24px);
+    max-width: none;
+    margin-left: calc(50% - 50vw + 12px);
+    padding: 18px 16px;
+  }
+  #applicants-panel .card-header { margin-bottom: 14px; }
+  #applicants-panel .summary-grid { margin-bottom: 14px; }
+  #applicants-panel .applicant-table-wrap { overflow: visible; }
+}
 
 .qr-layout { display: grid; grid-template-columns: 260px 1fr; gap: 30px; align-items: center; }
 .qr-link { display: block; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
@@ -651,6 +709,22 @@ dialog::backdrop { background: rgba(4, 3, 22, .5); }
   .result-grid, .qr-layout { grid-template-columns: 1fr; }
   .overall-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .qr-link { max-width: 260px; }
+  .applicant-management-table { min-width: 1900px; table-layout: fixed; }
+  .applicant-management-table th,
+  .applicant-management-table td { padding: 7px 8px; font-size: 11px; }
+  .applicant-table-scroll-top {
+    display: block;
+    height: 15px;
+    margin: 0 0 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--background);
+    overscroll-behavior-inline: contain;
+  }
+  .applicant-table-guide { display: block; }
+  .applicant-table-scroll-top > div { height: 1px; }
 }
 
 @media (max-width: 620px) {
@@ -666,6 +740,7 @@ dialog::backdrop { background: rgba(4, 3, 22, .5); }
   .page-heading .heading-actions, .toolbar { width: 100%; }
   .page-heading .button, .toolbar .button, .search-box { flex: 1; min-width: 100%; }
   .card, .public-card { padding: 20px; border-radius: 13px; }
+  .applicant-table-scroll-top { margin-right: -20px; margin-left: -20px; border-right: 0; border-left: 0; border-radius: 0; }
   .applicant-table-wrap { margin-right: -20px; margin-left: -20px; border-right: 0; border-left: 0; border-radius: 0; }
   .applicant-table-guide { margin-top: -4px; }
   .card-header { align-items: flex-start; flex-direction: column; }
