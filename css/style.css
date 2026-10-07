@@ -290,6 +290,17 @@ th { background: var(--primary-soft); color: var(--primary); font-size: 13px; fo
 .applicant-table-guide { display: none; margin: -6px 0 10px; }
 .applicant-table-scroll-top { display: none; }
 .applicant-table-wrap { overscroll-behavior-inline: contain; }
+#applicants-panel > .card-header,
+#applicants-panel > #contact-summary,
+#applicants-panel > .applicant-table-guide,
+#applicants-panel > .applicant-table-scroll-top,
+#applicants-panel > .applicant-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  margin-right: 0;
+  margin-left: 0;
+}
+#applicants-panel > #contact-summary { gap: 12px; }
 .applicant-management-table { table-layout: fixed; }
 .applicant-management-table th:nth-child(1), .applicant-management-table td:nth-child(1) { width: 2.5%; text-align: center; }
 .applicant-management-table th:nth-child(2), .applicant-management-table td:nth-child(2) { width: 6%; }
@@ -445,10 +456,17 @@ tbody tr:hover { background: var(--primary-soft); }
 .applicant-number { display: inline-block; min-width: 24px; color: var(--text-muted); font-size: 13px; font-weight: 700; }
 
 @media (min-width: 901px) {
-  #applicants-panel {
-    width: calc(100vw - 24px);
+  body[data-page="education-detail"]:has(#applicants-panel:not([hidden])) .page-shell {
+    width: 100%;
     max-width: none;
-    margin-left: calc(50% - 50vw + 12px);
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+  #applicants-panel {
+    width: 100%;
+    max-width: 100%;
+    margin-right: 0;
+    margin-left: 0;
     padding: 18px 16px;
   }
   #applicants-panel .card-header { margin-bottom: 14px; }
@@ -740,8 +758,6 @@ dialog::backdrop { background: rgba(4, 3, 22, .5); }
   .page-heading .heading-actions, .toolbar { width: 100%; }
   .page-heading .button, .toolbar .button, .search-box { flex: 1; min-width: 100%; }
   .card, .public-card { padding: 20px; border-radius: 13px; }
-  .applicant-table-scroll-top { margin-right: -20px; margin-left: -20px; border-right: 0; border-left: 0; border-radius: 0; }
-  .applicant-table-wrap { margin-right: -20px; margin-left: -20px; border-right: 0; border-left: 0; border-radius: 0; }
   .applicant-table-guide { margin-top: -4px; }
   .card-header { align-items: flex-start; flex-direction: column; }
   .partner-logos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; padding: 14px 16px; }
