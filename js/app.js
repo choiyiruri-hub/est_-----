@@ -744,6 +744,7 @@
         box.disabled = id === "select-all" ? !selectableTargets.length : !attendanceTargets.length;
       });
       document.querySelector("#mark-selected-sms-sent").disabled = true;
+      document.querySelector("#selected-applicant-count").textContent = "선택 0명";
       document.querySelector("#mark-selected-attended").disabled = true;
       document.querySelectorAll("[data-call]").forEach(function (select) { const item = course.applicants.find(function (a) { return a.id === select.dataset.call; }); select.value = item.callStatus; });
       document.querySelectorAll("[data-sms]").forEach(function (select) { const item = course.applicants.find(function (a) { return a.id === select.dataset.sms; }); select.value = item.smsStatus; });
@@ -929,6 +930,9 @@
       selectAll.checked = boxes.length > 0 && selectedCount === boxes.length;
       selectAll.indeterminate = selectedCount > 0 && selectedCount < boxes.length;
       document.querySelector("#" + actionButtonId).disabled = selectedCount === 0;
+      if (checkSelector === ".applicant-check") {
+        document.querySelector("#selected-applicant-count").textContent = "선택 " + selectedCount + "명";
+      }
     }
     function toggleBulkSelection(checkSelector, selectAllId, actionButtonId, checked) {
       document.querySelectorAll(checkSelector).forEach(function (box) { box.checked = !box.disabled && checked; });
