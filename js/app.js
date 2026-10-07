@@ -273,12 +273,16 @@
     return digits.slice(0, 6) + "-" + digits.slice(6);
   }
   function activeApplicants(course) { return course.applicants.filter(function (item) { return item.status !== "취소"; }); }
+  function attendanceApplicants(course) {
+    return activeApplicants(course).filter(function (item) { return item.attendanceIntent !== "불참"; });
+  }
   function counts(course) {
     const active = activeApplicants(course);
+    const attendanceTargets = attendanceApplicants(course);
     return {
       current: active.length,
       over: Math.max(0, active.length - Number(course.capacity)),
-      attended: active.filter(function (item) { return item.attendance === "출석"; }).length,
+      attended: attendanceTargets.filter(function (item) { return item.attendance === "출석"; }).length,
       survey: course.responses.length
     };
   }
@@ -698,13 +702,13 @@
       document.querySelector("#over-count").textContent = count.over + "명";
       document.querySelector("#over-count").classList.toggle("text-danger", count.over > 0);
       document.querySelector("#applicant-body").innerHTML = course.applicants.map(applicantRow).join("") || '<tr><td colspan="17" class="empty-cell">신청자가 없습니다.</td></tr>';
-      const active = activeApplicants(course);
-      document.querySelector("#attendance-body").innerHTML = active.map(attendanceRow).join("") || '<tr><td colspan="4" class="empty-cell">출석 대상이 없습니다.</td></tr>';
+      const attendanceTargets = attendanceApplicants(course);
+      document.querySelector("#attendance-body").innerHTML = attendanceTargets.map(attendanceRow).join("") || '<tr><td colspan="4" class="empty-cell">출석 대상이 없습니다.</td></tr>';
       ["select-all", "attendance-select-all"].forEach(function (id) {
         const box = document.querySelector("#" + id);
         box.checked = false;
         box.indeterminate = false;
-        box.disabled = id === "select-all" ? !course.applicants.length : !active.length;
+        box.disabled = id === "select-all" ? !course.applicants.length : !attendanceTargets.length;
       });
       document.querySelector("#mark-selected-sms-sent").disabled = true;
       document.querySelector("#mark-selected-attended").disabled = true;
@@ -717,8 +721,9 @@
     }
     function updateSummaries() {
       const active = activeApplicants(course);
+      const attendanceTargets = attendanceApplicants(course);
       document.querySelector("#contact-summary").innerHTML = ["미통화", "부재"].map(function (state) { return '<div class="summary-card"><span>' + state + '</span><strong>' + active.filter(function (a) { return a.callStatus === state; }).length + "명</strong></div>"; }).join("") + '<div class="summary-card"><span>문자 미발송</span><strong>' + active.filter(function (a) { return a.smsStatus === "미발송"; }).length + "명</strong></div>";
-      document.querySelector("#attendance-summary").innerHTML = ["출석", "결석", "미확인"].map(function (state) { return '<div class="summary-card"><span>' + state + '</span><strong>' + active.filter(function (a) { return a.attendance === state; }).length + "명</strong></div>"; }).join("");
+      document.querySelector("#attendance-summary").innerHTML = ["출석", "결석", "미확인"].map(function (state) { return '<div class="summary-card"><span>' + state + '</span><strong>' + attendanceTargets.filter(function (a) { return a.attendance === state; }).length + "명</strong></div>"; }).join("");
       document.querySelector("#survey-summary").innerHTML = '<div class="summary-card"><span>제출 건수</span><strong>' + course.responses.length + '건</strong></div>';
     }
     function setupApplicantTableScroll() {
@@ -927,7 +932,7 @@
     });
     document.querySelector("#mark-selected-attended").addEventListener("click", async function () {
       const ids = Array.from(document.querySelectorAll(".attendance-check:checked")).map(function (box) { return box.value; });
-      const selected = activeApplicants(course).filter(function (applicant) { return ids.includes(applicant.id); });
+      const selected = attendanceApplicants(course).filter(function (applicant) { return ids.includes(applicant.id); });
       if (!selected.length) return;
       const result = await requireDb().from("applications").update({ attendance_status: "출석" }).in("id", ids);
       if (result.error) {
@@ -984,8 +989,7 @@
         return;
       }
       item.attendanceIntent = next;
-      const row = select.closest("tr");
-      if (row) row.classList.toggle("row-not-attending", next === "불참");
+      renderAll();
     }
     function download(applicants) {
       if (!applicants.length) { setMessage(document.querySelector("#detail-message"), "다운로드할 신청자를 선택해 주세요.", "error"); return; }
