@@ -276,6 +276,9 @@
   function attendanceApplicants(course) {
     return activeApplicants(course).filter(function (item) { return item.attendanceIntent !== "불참"; });
   }
+  function selectableApplicants(course) {
+    return course.applicants.filter(function (item) { return item.attendanceIntent !== "불참"; });
+  }
   function counts(course) {
     const active = activeApplicants(course);
     const attendanceTargets = attendanceApplicants(course);
@@ -680,7 +683,8 @@
       if (applicant.status === "취소") rowClasses.push("row-cancelled");
       if (applicant.attendanceIntent === "불참") rowClasses.push("row-not-attending");
       return '<tr class="' + rowClasses.join(" ") + '" data-applicant-row="' + escapeHtml(applicant.id) + '">' +
-        '<td><input type="checkbox" class="applicant-check" value="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 선택"></td>' +
+        '<td><input type="checkbox" class="applicant-check" value="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 선택"' +
+          (applicant.attendanceIntent === "불참" ? ' disabled aria-disabled="true" title="불참 신청자는 선택할 수 없습니다."' : "") + '></td>' +
         '<td><span class="applicant-number">' + (index + 1) + '.</span><strong>' + escapeHtml(applicant.name) + "</strong> " + (applicant.duplicate ? badge("중복 신청") : "") + "</td>" +
         "<td>" + escapeHtml(applicant.phone) + "</td><td>" + escapeHtml(applicant.email || "-") + "</td><td>" + escapeHtml(applicant.resident) + "</td><td>" + escapeHtml(applicant.organization) + "</td>" +
         "<td>" + (applicant.agreed ? "동의" : "미동의") + "</td><td>" + escapeHtml(applicant.appliedAt) + "</td><td>" + badge(applicant.applyType) + "</td>" +
@@ -703,12 +707,13 @@
       document.querySelector("#over-count").classList.toggle("text-danger", count.over > 0);
       document.querySelector("#applicant-body").innerHTML = course.applicants.map(applicantRow).join("") || '<tr><td colspan="17" class="empty-cell">신청자가 없습니다.</td></tr>';
       const attendanceTargets = attendanceApplicants(course);
+      const selectableTargets = selectableApplicants(course);
       document.querySelector("#attendance-body").innerHTML = attendanceTargets.map(attendanceRow).join("") || '<tr><td colspan="4" class="empty-cell">출석 대상이 없습니다.</td></tr>';
       ["select-all", "attendance-select-all"].forEach(function (id) {
         const box = document.querySelector("#" + id);
         box.checked = false;
         box.indeterminate = false;
-        box.disabled = id === "select-all" ? !course.applicants.length : !attendanceTargets.length;
+        box.disabled = id === "select-all" ? !selectableTargets.length : !attendanceTargets.length;
       });
       document.querySelector("#mark-selected-sms-sent").disabled = true;
       document.querySelector("#mark-selected-attended").disabled = true;
@@ -890,7 +895,7 @@
       window.print();
     });
     function syncBulkSelection(checkSelector, selectAllId, actionButtonId) {
-      const boxes = Array.from(document.querySelectorAll(checkSelector));
+      const boxes = Array.from(document.querySelectorAll(checkSelector)).filter(function (box) { return !box.disabled; });
       const selectedCount = boxes.filter(function (box) { return box.checked; }).length;
       const selectAll = document.querySelector("#" + selectAllId);
       selectAll.checked = boxes.length > 0 && selectedCount === boxes.length;
@@ -898,8 +903,14 @@
       document.querySelector("#" + actionButtonId).disabled = selectedCount === 0;
     }
     function toggleBulkSelection(checkSelector, selectAllId, actionButtonId, checked) {
-      document.querySelectorAll(checkSelector).forEach(function (box) { box.checked = checked; });
+      document.querySelectorAll(checkSelector).forEach(function (box) { box.checked = !box.disabled && checked; });
       syncBulkSelection(checkSelector, selectAllId, actionButtonId);
+    }
+    function restoreApplicantSelection(selectedIds) {
+      document.querySelectorAll(".applicant-check").forEach(function (box) {
+        box.checked = !box.disabled && selectedIds.has(box.value);
+      });
+      syncBulkSelection(".applicant-check", "select-all", "mark-selected-sms-sent");
     }
     document.querySelector("#select-all").addEventListener("change", function (event) {
       toggleBulkSelection(".applicant-check", "select-all", "mark-selected-sms-sent", event.target.checked);
@@ -919,9 +930,10 @@
     });
     document.querySelector("#mark-selected-sms-sent").addEventListener("click", async function () {
       const ids = Array.from(document.querySelectorAll(".applicant-check:checked")).map(function (box) { return box.value; });
-      const selected = course.applicants.filter(function (applicant) { return ids.includes(applicant.id); });
+      const selected = selectableApplicants(course).filter(function (applicant) { return ids.includes(applicant.id); });
+      const selectedIds = selected.map(function (applicant) { return applicant.id; });
       if (!selected.length) return;
-      const result = await requireDb().from("applications").update({ sms_status: "발송완료" }).in("id", ids);
+      const result = await requireDb().from("applications").update({ sms_status: "발송완료" }).in("id", selectedIds);
       if (result.error) {
         setMessage(document.querySelector("#detail-message"), "문자 상태를 변경하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
         return;
@@ -982,6 +994,7 @@
       const item = course.applicants.find(function (applicant) { return applicant.id === id; });
       const previous = item.attendanceIntent || "미정";
       const next = select.value;
+      const selectedIds = new Set(Array.from(document.querySelectorAll(".applicant-check:checked")).map(function (box) { return box.value; }));
       const result = await requireDb().from("applications").update({ attendance_intent: next }).eq("id", id).eq("course_id", course.id);
       if (result.error) {
         select.value = previous;
@@ -990,6 +1003,8 @@
       }
       item.attendanceIntent = next;
       renderAll();
+      if (next === "불참") selectedIds.delete(id);
+      restoreApplicantSelection(selectedIds);
     }
     function download(applicants) {
       if (!applicants.length) { setMessage(document.querySelector("#detail-message"), "다운로드할 신청자를 선택해 주세요.", "error"); return; }
