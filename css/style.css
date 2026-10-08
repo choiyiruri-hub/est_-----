@@ -593,18 +593,17 @@ tbody tr:hover { background: var(--primary-soft); }
 .applicant-actions { flex-wrap: nowrap; min-width: max-content; }
 .applicant-number { display: inline-block; min-width: 24px; color: var(--text-muted); font-size: 13px; font-weight: 700; }
 
+.education-detail-layout { padding-bottom: 64px; }
+.page-shell.education-detail-common { padding-bottom: 0; }
+.education-detail-panels > .tab-panel {
+  width: min(1440px, calc(100% - 48px));
+  margin: 16px auto 0;
+}
+
 @media (min-width: 901px) {
-  body[data-page="education-detail"]:has(#applicants-panel:not([hidden])) .page-shell {
-    width: 100%;
-    max-width: none;
-    padding-right: 12px;
-    padding-left: 12px;
-  }
   #applicants-panel {
-    width: 100%;
-    max-width: 100%;
-    margin-right: 0;
-    margin-left: 0;
+    width: calc(100% - 24px);
+    max-width: none;
     padding: 18px 16px;
   }
   #applicants-panel .card-header { margin-bottom: 14px; }
@@ -883,6 +882,7 @@ dialog::backdrop { background: rgba(4, 3, 22, .5); }
   .site-header { min-height: auto; align-items: flex-start; padding: 16px 20px; }
   .site-nav { flex-wrap: wrap; justify-content: flex-end; }
   .page-shell { width: min(100% - 28px, 1440px); padding-top: 30px; }
+  .education-detail-panels > .tab-panel { width: min(100% - 28px, 1440px); }
   .page-heading { flex-direction: column; }
   .meta-grid { grid-template-columns: repeat(2, 1fr); }
   .detail-summary-layout { grid-template-columns: 1fr; gap: 20px; }
@@ -940,6 +940,8 @@ dialog::backdrop { background: rgba(4, 3, 22, .5); }
   .site-nav { margin-top: 14px; justify-content: center; }
   .site-nav a { padding: 8px 9px; font-size: 13px; }
   .page-shell { width: min(100% - 20px, 1440px); padding: 26px 0 44px; }
+  .education-detail-layout { padding-bottom: 44px; }
+  .education-detail-panels > .tab-panel { width: min(100% - 20px, 1440px); }
   .page-heading { gap: 18px; margin-bottom: 20px; }
   .page-heading p { font-size: 14px; }
   .page-heading .heading-actions, .toolbar { width: 100%; }
