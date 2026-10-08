@@ -535,6 +535,19 @@ tbody tr:hover { background: var(--primary-soft); }
 .meta-item { display: grid; gap: 5px; min-height: 92px; padding: 17px; background: #fff; }
 .meta-item span { color: var(--text-muted); font-size: 13px; }
 .meta-item strong { color: var(--primary); font-size: 16px; }
+.detail-summary-layout { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 22px; align-items: stretch; }
+.application-summary-qr {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  padding-left: 22px;
+  border-left: 1px solid var(--line);
+}
+.application-summary-qr h2 { margin: 0; color: var(--primary); font-size: 15px; line-height: 1.3; }
+.application-summary-qr .survey-qr-frame { width: 156px; }
+.application-summary-qr .button { width: 156px; min-height: 30px; padding: 4px 8px; font-size: 11px; }
 
 .tabs {
   display: flex;
@@ -619,12 +632,6 @@ tbody tr:hover { background: var(--primary-soft); }
 .survey-qr-frame canvas { display: block; width: 100%; height: 100%; background: #fff; image-rendering: pixelated; }
 .survey-qr-frame .helper { margin: 0; padding: 16px; text-align: center; }
 .survey-qr-panel .button { width: 100%; }
-.application-share-card { margin-bottom: 14px; border: 1px solid var(--line); border-radius: 11px; background: var(--background); }
-.application-share-card > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; color: var(--primary); font-weight: 800; cursor: pointer; }
-.application-share-card > summary small { color: var(--text-muted); font-size: 11px; font-weight: 650; }
-.application-share-content { padding: 16px; border-top: 1px solid var(--line); }
-.application-share-card .notice { margin: 12px 0 0; }
-.application-share-helper { margin: 12px 0 0; }
 .heading-actions a[aria-disabled="true"] { pointer-events: none; opacity: .55; }
 .survey-results-content { padding-top: 26px; border-top: 1px solid var(--line); }
 .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
@@ -878,6 +885,13 @@ dialog::backdrop { background: rgba(4, 3, 22, .5); }
   .page-shell { width: min(100% - 28px, 1440px); padding-top: 30px; }
   .page-heading { flex-direction: column; }
   .meta-grid { grid-template-columns: repeat(2, 1fr); }
+  .detail-summary-layout { grid-template-columns: 1fr; gap: 20px; }
+  .application-summary-qr {
+    width: 100%;
+    padding: 20px 0 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
   .result-grid { grid-template-columns: 1fr; }
   .overall-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .survey-share-layout { grid-template-columns: 1fr; }

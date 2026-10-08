@@ -846,42 +846,39 @@
       setMessage(document.querySelector("#survey-copy-message"), "교육 ID가 없어 만족도 조사 공유 기능을 사용할 수 없습니다.", "error");
     }
 
-    const applicationLinkInput = document.querySelector("#application-link");
     const copyApplyLinkButton = document.querySelector("#copy-apply-link");
-    const copyApplicationLinkButton = document.querySelector("#copy-application-link");
     const openApplyLink = document.querySelector("#open-apply-link");
-    const openApplicationLinkButton = document.querySelector("#open-application-link");
     const applicationQrCanvas = document.querySelector("#application-qr-canvas");
     const applicationQrMessage = document.querySelector("#application-qr-message");
     const downloadApplicationQrButton = document.querySelector("#download-application-qr");
-    applicationLinkInput.value = applicationUrl;
-    applicationLinkInput.title = applicationUrl;
 
     async function copyApplicationLink() {
-      const shareMessage = document.querySelector("#application-copy-message");
+      const detailMessage = document.querySelector("#detail-message");
       if (!applicationUrl) {
-        setMessage(shareMessage, "교육 ID를 확인할 수 없어 신청 링크를 복사할 수 없습니다.", "error");
+        setMessage(detailMessage, "교육 ID를 확인할 수 없어 신청 링크를 복사할 수 없습니다.", "error");
         return;
       }
       try {
         if (navigator.clipboard && window.isSecureContext) {
           await navigator.clipboard.writeText(applicationUrl);
         } else {
-          applicationLinkInput.focus();
-          applicationLinkInput.select();
-          applicationLinkInput.setSelectionRange(0, applicationLinkInput.value.length);
-          if (!document.execCommand("copy")) throw new Error("copy command failed");
+          const temporaryInput = document.createElement("textarea");
+          temporaryInput.value = applicationUrl;
+          temporaryInput.setAttribute("readonly", "");
+          temporaryInput.style.position = "fixed";
+          temporaryInput.style.opacity = "0";
+          document.body.appendChild(temporaryInput);
+          try {
+            temporaryInput.select();
+            if (!document.execCommand("copy")) throw new Error("copy command failed");
+          } finally {
+            temporaryInput.remove();
+          }
         }
-        setMessage(shareMessage, "신청 링크가 복사되었습니다.", "success");
-        setMessage(document.querySelector("#detail-message"), "신청 링크가 복사되었습니다.", "success");
+        setMessage(detailMessage, "신청 링크가 복사되었습니다.", "success");
       } catch (error) {
-        setMessage(shareMessage, "신청 링크를 복사하지 못했습니다. 링크를 직접 선택해 복사해 주세요.", "error");
+        setMessage(detailMessage, "신청 링크를 복사하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
       }
-    }
-    function openApplicationLink() {
-      if (!applicationUrl) return;
-      const opened = window.open(applicationUrl, "_blank", "noopener,noreferrer");
-      if (opened) opened.opener = null;
     }
     async function saveApplicationQrPng() {
       try {
@@ -892,16 +889,12 @@
       }
     }
     copyApplyLinkButton.addEventListener("click", copyApplicationLink);
-    copyApplicationLinkButton.addEventListener("click", copyApplicationLink);
-    openApplicationLinkButton.addEventListener("click", openApplicationLink);
     downloadApplicationQrButton.addEventListener("click", saveApplicationQrPng);
 
     if (applicationUrl) {
       copyApplyLinkButton.disabled = false;
-      copyApplicationLinkButton.disabled = false;
       openApplyLink.href = applicationUrl;
       openApplyLink.setAttribute("aria-disabled", "false");
-      openApplicationLinkButton.disabled = false;
       try {
         renderApplicationQr(applicationQrCanvas, applicationUrl);
         applicationQrCanvas.hidden = false;
@@ -914,11 +907,10 @@
         applicationQrMessage.textContent = "QR을 생성하지 못했습니다. 교육 신청 링크를 이용해 주세요.";
       }
     } else {
-      applicationLinkInput.placeholder = "교육 ID를 확인할 수 없습니다.";
       applicationQrCanvas.hidden = true;
       applicationQrMessage.hidden = false;
       applicationQrMessage.textContent = "교육 ID가 없어 QR을 생성할 수 없습니다.";
-      setMessage(document.querySelector("#application-copy-message"), "교육 ID가 없어 교육 신청 공유 기능을 사용할 수 없습니다.", "error");
+      setMessage(document.querySelector("#detail-message"), "교육 ID가 없어 교육 신청 공유 기능을 사용할 수 없습니다.", "error");
     }
 
     function activateDetailTab(panelId) {
