@@ -1060,6 +1060,12 @@
         const width = average !== null ? Math.min(100, Math.max(0, average / 5 * 100)) : 0;
         return '<div class="question-average-row"><div class="question-average-label"><span>' + (questionIndex + 1) + '</span><div><strong>' + escapeHtml(question.text) + '</strong><small>응답 ' + values.length + '명</small></div></div><div class="question-average-meter" role="img" aria-label="' + escapeHtml(question.text + ": 평균 " + scoreText + ", 응답 " + values.length + "명") + '"><span class="question-average-fill" style="width:' + width + '%"></span><strong class="question-average-value">' + scoreText + '</strong></div></div>';
       }).join("") + '</div>' : '<p class="muted">점수형 문항이 없습니다.</p>';
+      document.querySelector("#print-score-table-body").innerHTML = scores.length ? scores.map(function (question, questionIndex) {
+        const values = course.responses.map(function (response) { return Number(response.answers[question.id]); }).filter(Boolean);
+        const counts = [1, 2, 3, 4, 5].map(function (score) { return values.filter(function (value) { return value === score; }).length; });
+        const average = values.length ? (values.reduce(function (sum, value) { return sum + value; }, 0) / values.length).toFixed(1) : "-";
+        return '<tr><td class="print-score-number">' + (questionIndex + 1) + '</td><td class="print-score-question">' + escapeHtml(question.text) + '</td>' + counts.map(function (count) { return '<td class="print-score-value">' + count + '명</td>'; }).join("") + '<td class="print-score-average">' + average + '</td></tr>';
+      }).join("") : '<tr><td colspan="8" class="print-score-empty">점수형 문항이 없습니다.</td></tr>';
       document.querySelector("#score-distributions").innerHTML = scores.map(function (question) {
         const values = course.responses.map(function (response) { return Number(response.answers[question.id]); }).filter(Boolean);
         return scoreDistribution(question.text, values, false);
