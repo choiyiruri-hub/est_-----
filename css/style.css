@@ -612,6 +612,12 @@ tbody tr:hover { background: var(--primary-soft); }
 }
 
 .survey-share-section { margin-bottom: 26px; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--background); }
+.survey-management-actions { justify-content: flex-end; }
+.survey-response-control { display: flex; align-items: center; gap: 8px; padding: 5px; border: 1px solid var(--line); border-radius: 10px; background: var(--background); }
+.survey-response-status { display: inline-flex; min-height: 30px; align-items: center; padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; font-weight: 850; white-space: nowrap; }
+.survey-response-status.is-open { border-color: #cce1b5; color: var(--accent-green-strong); background: var(--accent-green-soft); }
+.survey-response-status.is-closed { border-color: #edc4c4; color: var(--danger); background: var(--danger-soft); }
+.survey-response-control .button { min-height: 30px; }
 .survey-share-heading { margin-bottom: 15px; }
 .survey-share-heading h3 { margin: 0; }
 .survey-share-heading p { margin: 4px 0 0; color: var(--text-muted); }
@@ -959,8 +965,13 @@ dialog::backdrop { background: rgba(4, 3, 22, .5); }
   .question-average-row { grid-template-columns: 1fr; gap: 7px; padding: 10px 14px; }
   .respondent-detail-heading { flex-direction: column; }
   .survey-link-row { align-items: stretch; flex-direction: column; }
-  .survey-link-actions { width: 100%; }
-  .survey-link-actions .button { flex: 1; }
+  .survey-link-actions { width: 100%; flex-direction: column; }
+  .survey-link-actions .button { width: 100%; flex: none; }
+  .survey-management-actions { display: grid; width: 100%; align-self: stretch; align-items: stretch; grid-template-columns: minmax(0, 1fr); justify-items: stretch; }
+  .survey-management-actions > .button { width: 100%; }
+  .survey-response-control { display: grid; width: 100%; min-width: 0; box-sizing: border-box; grid-template-columns: minmax(0, 1fr); }
+  .survey-response-status { justify-content: center; }
+  .survey-response-control .button { width: 100%; min-width: 0; }
   .course-info-layout, .consent-options { grid-template-columns: 1fr; }
   .course-poster { max-height: 520px; }
   .consent-section { padding: 15px; }

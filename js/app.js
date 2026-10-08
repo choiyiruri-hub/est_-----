@@ -191,6 +191,7 @@
         instructorBio: row.instructor_bio,
         description: row.description,
         poster: row.poster_path || "",
+        surveyResponsesOpen: row.survey_responses_open !== false,
         questions: questions,
         applicants: applicants,
         responses: responses
@@ -321,9 +322,6 @@
     const firstDate = courseFirstDate(course);
     return new Date(shiftDateString(firstDate, -1) + "T17:00:00+09:00");
   }
-  function surveyDeadline(course) {
-    return new Date(shiftDateString(courseLastDate(course), 2) + "T23:59:59+09:00");
-  }
   function status(course) {
     const now = new Date();
     if (now > dateTime(course, course.endTime)) return "교육 종료";
@@ -338,6 +336,12 @@
   }
   function formatDeadlineDateTime(value) {
     return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: "Asia/Seoul" }).format(value);
+  }
+  async function getSurveyResponsesOpen(courseId) {
+    const result = await requireDb().from("courses").select("survey_responses_open").eq("id", courseId).maybeSingle();
+    if (result.error) throw result.error;
+    if (!result.data) throw new Error("교육 정보를 찾을 수 없습니다.");
+    return result.data.survey_responses_open !== false;
   }
   function formatCourseDates(course) {
     return normalizeCourseDates(course && course.dates, course && course.date).map(formatDate).join(", ");
@@ -776,16 +780,47 @@
       ["정원", course.capacity + "명"], ["신청 인원", '<span id="current-count"></span>'], ["초과 인원", '<span id="over-count"></span>'],
       ["신청 마감", formatDeadlineDateTime(deadline(course))], ["교육 상태", badge(status(course))]
     ].map(function (item) { return '<div class="meta-item"><span>' + item[0] + "</span><strong>" + item[1] + "</strong></div>"; }).join("");
-    document.querySelector("#survey-deadline").textContent = formatDateTime(surveyDeadline(course));
     const surveyLinkInput = document.querySelector("#survey-link");
     const copySurveyLinkButton = document.querySelector("#copy-survey-link");
     const openSurveyLinkButton = document.querySelector("#open-survey-link");
     const surveyQrCanvas = document.querySelector("#survey-qr-canvas");
     const surveyQrMessage = document.querySelector("#survey-qr-message");
     const downloadSurveyQrButton = document.querySelector("#download-survey-qr");
+    const surveyResponseStatus = document.querySelector("#survey-response-status");
+    const toggleSurveyResponseButton = document.querySelector("#toggle-survey-response");
     surveyLinkInput.value = surveyUrl;
     surveyLinkInput.title = surveyUrl;
-    if (new Date() > surveyDeadline(course)) document.querySelector("#survey-period-state").innerHTML = badge("응답기간 종료");
+
+    function renderSurveyResponseControl() {
+      const isOpen = course.surveyResponsesOpen !== false;
+      surveyResponseStatus.textContent = isOpen ? "응답 접수 중" : "응답 마감";
+      surveyResponseStatus.classList.toggle("is-open", isOpen);
+      surveyResponseStatus.classList.toggle("is-closed", !isOpen);
+      toggleSurveyResponseButton.textContent = isOpen ? "응답 마감" : "응답 다시 열기";
+      toggleSurveyResponseButton.classList.toggle("button-danger", isOpen);
+      toggleSurveyResponseButton.classList.toggle("button-secondary", !isOpen);
+      toggleSurveyResponseButton.disabled = false;
+    }
+
+    async function setSurveyResponsesOpen(nextOpen) {
+      if (!nextOpen && !confirm("이 교육의 만족도 응답을 마감하시겠습니까?")) return;
+      toggleSurveyResponseButton.disabled = true;
+      try {
+        const result = await requireDb().from("courses").update({ survey_responses_open: nextOpen }).eq("id", course.id).select("survey_responses_open").single();
+        if (result.error) throw result.error;
+        course.surveyResponsesOpen = result.data.survey_responses_open !== false;
+        renderSurveyResponseControl();
+      } catch (error) {
+        console.error(error);
+        toggleSurveyResponseButton.disabled = false;
+        setMessage(document.querySelector("#detail-message"), "만족도 응답 상태를 변경하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
+      }
+    }
+
+    renderSurveyResponseControl();
+    toggleSurveyResponseButton.addEventListener("click", function () {
+      setSurveyResponsesOpen(course.surveyResponsesOpen === false);
+    });
 
     async function copySurveyLink() {
       const message = document.querySelector("#survey-copy-message");
@@ -1428,6 +1463,16 @@
 
   async function initSurvey() {
     const form = document.querySelector("#survey-form");
+    const submitButton = form.querySelector('button[type="submit"]');
+    const closedMessage = "현재 이 교육의 만족도 조사는 응답이 마감되었습니다.";
+    form.hidden = true;
+
+    function showSurveyClosedState() {
+      form.hidden = true;
+      submitButton.disabled = true;
+      setMessage(document.querySelector("#survey-message"), closedMessage, "error");
+    }
+
     let courses = [];
     try {
       courses = await getCourses(false);
@@ -1446,6 +1491,17 @@
       return;
     }
     document.querySelector("#survey-course-title").textContent = course.name;
+    try {
+      course.surveyResponsesOpen = await getSurveyResponsesOpen(course.id);
+    } catch (error) {
+      console.error(error);
+      setMessage(document.querySelector("#survey-message"), "만족도 응답 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
+      return;
+    }
+    if (!course.surveyResponsesOpen) {
+      showSurveyClosedState();
+      return;
+    }
     let questionNumber = 0;
     document.querySelector("#survey-question-list").innerHTML = groupQuestions(course.questions).map(function (group, groupIndex) {
       const questionsHtml = group.questions.map(function (q) {
@@ -1460,9 +1516,8 @@
       setMessage(document.querySelector("#survey-message"), "등록된 만족도 문항이 없습니다.", "info");
       return;
     }
-    if (new Date() > surveyDeadline(course)) {
-      form.hidden = true; setMessage(document.querySelector("#survey-message"), "만족도 조사 응답 기간이 종료되었습니다.", "error"); return;
-    }
+    form.hidden = false;
+    submitButton.disabled = false;
     form.addEventListener("submit", async function (event) {
       event.preventDefault();
       const values = Object.fromEntries(new FormData(form).entries());
@@ -1475,31 +1530,41 @@
         setMessage(document.querySelector("#survey-message"), "나이는 1세 이상 120세 이하의 정수로 입력해 주세요.", "warning");
         return;
       }
-      const responseId = crypto.randomUUID();
-      const responseResult = await requireDb().from("survey_responses").insert({
-        id: responseId,
-        course_id: course.id,
-        respondent_name: null,
-        gender: values.gender,
-        age: age
-      });
-      if (responseResult.error) {
-        console.error(responseResult.error);
-        setMessage(document.querySelector("#survey-message"), "만족도 응답을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
+      submitButton.disabled = true;
+      try {
+        if (!await getSurveyResponsesOpen(course.id)) {
+          showSurveyClosedState();
+          return;
+        }
+      } catch (error) {
+        console.error(error);
+        submitButton.disabled = false;
+        setMessage(document.querySelector("#survey-message"), "만족도 응답 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
         return;
       }
+      const responseId = crypto.randomUUID();
       const answerRows = course.questions.map(function (question) {
         return {
-          response_id: responseId,
-          question_id: question.id,
+          question_id: String(question.id),
           score_value: question.type === "score" ? Number(values[question.id]) : null,
           text_value: question.type === "text" ? values[question.id] : null
         };
       });
-      const answerResult = await requireDb().from("survey_answers").insert(answerRows);
-      if (answerResult.error) {
-        console.error(answerResult.error);
-        setMessage(document.querySelector("#survey-message"), "문항별 답변을 저장하지 못했습니다. 관리자에게 문의해 주세요.", "error");
+      const responseResult = await requireDb().rpc("submit_survey_response", {
+        p_course_id: String(course.id),
+        p_response_id: responseId,
+        p_gender: values.gender,
+        p_age: age,
+        p_answers: answerRows
+      });
+      if (responseResult.error) {
+        console.error(responseResult.error);
+        if (String(responseResult.error.message || "").includes("응답이 마감")) {
+          showSurveyClosedState();
+          return;
+        }
+        submitButton.disabled = false;
+        setMessage(document.querySelector("#survey-message"), "만족도 응답을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
         return;
       }
       form.hidden = true;
