@@ -1044,6 +1044,18 @@
         const average = values.reduce(function (sum, value) { return sum + value; }, 0) / values.length;
         return Math.min(5, Math.max(1, Math.floor(average)));
       }).filter(function (value) { return value !== null; });
+      const scoreQuestionResults = scores.map(function (question, questionIndex) {
+        const values = course.responses.map(function (response) { return Number(response.answers[question.id]); }).filter(Boolean);
+        const average = values.length ? values.reduce(function (sum, value) { return sum + value; }, 0) / values.length : null;
+        return {
+          question: question,
+          questionIndex: questionIndex,
+          values: values,
+          average: average,
+          scoreText: average !== null ? average.toFixed(1) + " / 5" : "-",
+          width: average !== null ? Math.min(100, Math.max(0, average / 5 * 100)) : 0
+        };
+      });
       const textAnswerCount = course.questions.filter(function (question) { return question.type === "text"; }).reduce(function (count, question) {
         return count + course.responses.filter(function (response) { return response.answers[question.id]; }).length;
       }, 0);
@@ -1053,22 +1065,16 @@
         '<div class="summary-card"><span>주관식 답변</span><strong>' + textAnswerCount + '건</strong></div>' +
         '<div class="summary-card"><span>전체 평균</span><strong>' + overallAverage + (scoreValues.length ? ' / 5' : '') + '</strong></div>';
       document.querySelector("#overall-score-chart").innerHTML = scores.length ? scoreDistribution("전체 객관식 평균", respondentScoreBuckets, true, overallScore) : "";
-      document.querySelector("#score-results").innerHTML = scores.length ? '<div class="question-average-chart" role="img" aria-label="문항별 평균 점수 비교 차트"><div class="question-average-axis-row" aria-hidden="true"><span>문항 · 응답 수</span><div class="question-average-axis"><div><span style="left:20%">1점</span><span style="left:40%">2점</span><span style="left:60%">3점</span><span style="left:80%">4점</span><span style="left:100%">5점</span></div></div></div>' + scores.map(function (question, questionIndex) {
-        const values = course.responses.map(function (response) { return Number(response.answers[question.id]); }).filter(Boolean);
-        const average = values.length ? values.reduce(function (sum, value) { return sum + value; }, 0) / values.length : null;
-        const scoreText = average !== null ? average.toFixed(1) + " / 5" : "-";
-        const width = average !== null ? Math.min(100, Math.max(0, average / 5 * 100)) : 0;
-        return '<div class="question-average-row"><div class="question-average-label"><span>' + (questionIndex + 1) + '</span><div><strong>' + escapeHtml(question.text) + '</strong><small>응답 ' + values.length + '명</small></div></div><div class="question-average-meter" role="img" aria-label="' + escapeHtml(question.text + ": 평균 " + scoreText + ", 응답 " + values.length + "명") + '"><span class="question-average-fill" style="width:' + width + '%"></span><strong class="question-average-value">' + scoreText + '</strong></div></div>';
+      document.querySelector("#score-results").innerHTML = scoreQuestionResults.length ? '<div class="question-average-chart" role="img" aria-label="문항별 평균 점수 비교 차트"><div class="question-average-axis-row" aria-hidden="true"><span>문항 · 응답 수</span><div class="question-average-axis"><div><span style="left:20%">1점</span><span style="left:40%">2점</span><span style="left:60%">3점</span><span style="left:80%">4점</span><span style="left:100%">5점</span></div></div></div>' + scoreQuestionResults.map(function (result) {
+        return '<div class="question-average-row"><div class="question-average-label"><span>' + (result.questionIndex + 1) + '</span><div><strong>' + escapeHtml(result.question.text) + '</strong><small>응답 ' + result.values.length + '명</small></div></div><div class="question-average-meter" role="img" aria-label="' + escapeHtml(result.question.text + ": 평균 " + result.scoreText + ", 응답 " + result.values.length + "명") + '"><span class="question-average-fill" style="width:' + result.width + '%"></span><strong class="question-average-value">' + result.scoreText + '</strong></div></div>';
       }).join("") + '</div>' : '<p class="muted">점수형 문항이 없습니다.</p>';
-      document.querySelector("#print-score-table-body").innerHTML = scores.length ? scores.map(function (question, questionIndex) {
-        const values = course.responses.map(function (response) { return Number(response.answers[question.id]); }).filter(Boolean);
-        const counts = [1, 2, 3, 4, 5].map(function (score) { return values.filter(function (value) { return value === score; }).length; });
-        const average = values.length ? (values.reduce(function (sum, value) { return sum + value; }, 0) / values.length).toFixed(1) : "-";
-        return '<tr><td class="print-score-number">' + (questionIndex + 1) + '</td><td class="print-score-question">' + escapeHtml(question.text) + '</td>' + counts.map(function (count) { return '<td class="print-score-value">' + count + '명</td>'; }).join("") + '<td class="print-score-average">' + average + '</td></tr>';
-      }).join("") : '<tr><td colspan="8" class="print-score-empty">점수형 문항이 없습니다.</td></tr>';
-      document.querySelector("#score-distributions").innerHTML = scores.map(function (question) {
-        const values = course.responses.map(function (response) { return Number(response.answers[question.id]); }).filter(Boolean);
-        return scoreDistribution(question.text, values, false);
+      document.querySelector("#print-score-table-body").innerHTML = scoreQuestionResults.length ? scoreQuestionResults.map(function (result) {
+        const printScoreText = result.average !== null ? result.scoreText : "응답 없음";
+        const graphScoreText = result.average !== null ? result.average.toFixed(1) : "응답 없음";
+        return '<tr><td class="print-score-number">' + (result.questionIndex + 1) + '</td><td class="print-score-question">' + escapeHtml(result.question.text) + '</td><td class="print-score-average">' + printScoreText + '</td><td class="print-score-graph"><div class="print-average-meter" role="img" aria-label="' + escapeHtml(result.question.text + ": 평균 " + printScoreText) + '"><span class="print-average-track"><span class="print-average-fill' + (result.average === null ? ' is-empty' : '') + '" style="width:' + result.width + '%"></span></span><strong class="print-average-label">' + graphScoreText + '</strong></div></td></tr>';
+      }).join("") : '<tr><td colspan="4" class="print-score-empty">점수형 문항이 없습니다.</td></tr>';
+      document.querySelector("#score-distributions").innerHTML = scoreQuestionResults.map(function (result) {
+        return scoreDistribution(result.question.text, result.values, false);
       }).join("") || '<p class="muted">점수형 문항이 없습니다.</p>';
       const texts = course.questions.filter(function (q) { return q.type === "text"; });
       document.querySelector("#text-results").innerHTML = texts.map(function (question) {

@@ -1043,13 +1043,18 @@ dialog::backdrop { background: rgba(4, 3, 22, .5); }
   .printing-survey-results .print-score-table td { padding: .9mm 1mm; border: .25mm solid #9ca3af; vertical-align: middle; }
   .printing-survey-results .print-score-table th { color: #111827; background: #e5e7eb; font-size: 7.5pt; text-align: center; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .printing-survey-results .print-col-number { width: 9mm; }
-  .printing-survey-results .print-col-score { width: 14mm; }
-  .printing-survey-results .print-col-average { width: 15mm; }
+  .printing-survey-results .print-col-average { width: 20mm; }
+  .printing-survey-results .print-col-graph { width: 66mm; }
   .printing-survey-results .print-score-number,
-  .printing-survey-results .print-score-value,
   .printing-survey-results .print-score-average { text-align: center; white-space: nowrap; }
   .printing-survey-results .print-score-question { overflow-wrap: anywhere; word-break: keep-all; }
   .printing-survey-results .print-score-average { font-weight: 800; }
+  .printing-survey-results .print-score-graph { padding-right: 1.5mm; padding-left: 1.5mm; }
+  .printing-survey-results .print-average-meter { display: grid; grid-template-columns: minmax(0, 1fr) 15mm; gap: 1.5mm; align-items: center; }
+  .printing-survey-results .print-average-track { position: relative; display: block; height: 4mm; overflow: hidden; border: .3mm solid #4b5563; border-radius: 2mm; background: #fff; }
+  .printing-survey-results .print-average-fill { display: block; box-sizing: border-box; height: 100%; border-right: .35mm solid #111827; background: #6b7280; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .printing-survey-results .print-average-fill.is-empty { border-right: 0; }
+  .printing-survey-results .print-average-label { color: #111827; font-size: 7pt; text-align: right; white-space: nowrap; }
   .printing-survey-results .print-score-empty { padding: 4mm; color: #4b5563; text-align: center; }
 }
 
