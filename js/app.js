@@ -981,7 +981,7 @@
         '<td><select class="attendance-intent-select" data-attendance-intent="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 참석 예정 상태"><option>미정</option><option>참석</option><option>불참</option></select></td>' +
         "<td>" + badge(applicant.attendance) + "</td>" +
         '<td><select class="training-fee-select" data-training-fee="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 훈련비"><option value="">선택</option><option value="50,000원">50,000원</option><option value="75,000원">75,000원</option><option value="대규모기업">대규모기업</option></select></td>' +
-        '<td><div class="inline-actions applicant-actions"><button class="button button-small button-ghost" data-edit="' + applicant.id + '">수정</button><button class="button button-small ' + (applicant.status === "취소" ? "button-secondary" : "button-danger") + '" data-toggle="' + applicant.id + '">' + (applicant.status === "취소" ? "복구" : "취소") + "</button></div></td></tr>";
+        '<td><div class="inline-actions applicant-actions"><button class="button button-small button-ghost" data-edit="' + applicant.id + '">수정</button><button class="button button-small ' + (applicant.status === "취소" ? "button-secondary" : "button-danger") + '" data-toggle="' + applicant.id + '">' + (applicant.status === "취소" ? "복구" : "삭제") + "</button></div></td></tr>";
     }
     function attendanceRow(applicant) {
       return '<tr><td><input type="checkbox" class="attendance-check" value="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 선택"></td><td>' + escapeHtml(applicant.name) + "</td><td>" + escapeHtml(applicant.organization) + "</td>" +
