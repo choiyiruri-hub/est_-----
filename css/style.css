@@ -417,8 +417,8 @@ body[data-page="dashboard"] .partner-logos {
 .applicant-management-table th:nth-child(13), .applicant-management-table td:nth-child(13) { width: 10%; }
 .applicant-management-table th:nth-child(14), .applicant-management-table td:nth-child(14) { width: 5%; }
 .applicant-management-table th:nth-child(15), .applicant-management-table td:nth-child(15) { width: 4%; }
-.applicant-management-table th:nth-child(16), .applicant-management-table td:nth-child(16) { width: 4.5%; }
-.applicant-management-table th:nth-child(17), .applicant-management-table td:nth-child(17) { width: 8%; }
+.applicant-management-table th:nth-child(16), .applicant-management-table td:nth-child(16) { width: 7%; }
+.applicant-management-table th:nth-child(17), .applicant-management-table td:nth-child(17) { width: 5.5%; }
 .applicant-management-table thead th { position: sticky; z-index: 30; top: 0; box-shadow: 0 1px 0 var(--line); }
 .applicant-management-table tbody tr { height: 40px; }
 .applicant-management-table th,
@@ -453,8 +453,11 @@ body[data-page="dashboard"] .partner-logos {
 }
 .applicant-management-table .table-heading-action .button { min-height: 24px; padding: 2px 6px; font-size: 10px; }
 .applicant-management-table .applicant-status-select,
-.applicant-management-table .attendance-intent-select { width: auto; min-width: 0; min-height: 27px; padding: 3px 4px; border-radius: 6px; font-size: inherit; }
+.applicant-management-table .attendance-intent-select,
+.applicant-management-table .training-fee-select { width: auto; min-width: 0; min-height: 27px; padding: 3px 4px; border-radius: 6px; font-size: inherit; }
 .applicant-management-table .attendance-intent-select { border-color: #aebdcd; font-weight: 750; }
+.applicant-management-table .training-fee-select { width: 100%; border-color: #aebdcd; font-weight: 750; white-space: nowrap; }
+.applicant-management-table .training-fee-select[aria-busy="true"] { opacity: .72; }
 .applicant-management-table .contact-note-input { width: 100%; min-width: 0; min-height: 28px; padding: 3px 6px; border-radius: 6px; font-size: inherit; }
 .applicant-management-table td:nth-child(13) { position: relative; }
 .applicant-management-table td:nth-child(13):focus-within { z-index: 20; }

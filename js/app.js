@@ -16,6 +16,7 @@
   }
 
   const DEFAULT_QUESTION_GROUP = "기본 문항";
+  const TRAINING_FEE_OPTIONS = ["50,000원", "75,000원", "대규모기업"];
 
   function questionFromRow(question) {
     return {
@@ -173,7 +174,8 @@
           smsStatus: applicant.sms_status,
           attendance: applicant.attendance_status,
           contactNote: applicant.contact_note || "",
-          attendanceIntent: applicant.attendance_intent || "미정"
+          attendanceIntent: applicant.attendance_intent || "미정",
+          trainingFee: TRAINING_FEE_OPTIONS.includes(applicant.training_fee) ? applicant.training_fee : null
         };
       });
       const dates = normalizeCourseDates(row.course_dates, row.course_date);
@@ -960,9 +962,9 @@
     });
     const requestedTab = param("tab") || location.hash.replace(/^#/, "");
     if (requestedTab) activateDetailTab(requestedTab);
+    const trainingFeeSaveStates = new Map();
 
     function applicantRow(applicant, index) {
-      const surveyState = "익명 설문";
       const rowClasses = [];
       if (applicant.status === "취소") rowClasses.push("row-cancelled");
       if (applicant.attendanceIntent === "불참") rowClasses.push("row-not-attending");
@@ -977,7 +979,8 @@
         '<td><select class="applicant-status-select" data-sms="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 문자 상태"><option>미발송</option><option>발송완료</option></select></td>' +
         '<td><input class="contact-note-input" data-contact-note="' + applicant.id + '" value="' + escapeHtml(applicant.contactNote || "") + '" maxlength="200" placeholder="메모 입력" aria-label="' + escapeHtml(applicant.name) + ' 비고"></td>' +
         '<td><select class="attendance-intent-select" data-attendance-intent="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 참석 예정 상태"><option>미정</option><option>참석</option><option>불참</option></select></td>' +
-        "<td>" + badge(applicant.attendance) + "</td><td>" + badge(surveyState) + "</td>" +
+        "<td>" + badge(applicant.attendance) + "</td>" +
+        '<td><select class="training-fee-select" data-training-fee="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 훈련비"><option value="">선택</option><option value="50,000원">50,000원</option><option value="75,000원">75,000원</option><option value="대규모기업">대규모기업</option></select></td>' +
         '<td><div class="inline-actions applicant-actions"><button class="button button-small button-ghost" data-edit="' + applicant.id + '">수정</button><button class="button button-small ' + (applicant.status === "취소" ? "button-secondary" : "button-danger") + '" data-toggle="' + applicant.id + '">' + (applicant.status === "취소" ? "복구" : "취소") + "</button></div></td></tr>";
     }
     function attendanceRow(applicant) {
@@ -1005,6 +1008,12 @@
       document.querySelectorAll("[data-call]").forEach(function (select) { const item = course.applicants.find(function (a) { return a.id === select.dataset.call; }); select.value = item.callStatus; });
       document.querySelectorAll("[data-sms]").forEach(function (select) { const item = course.applicants.find(function (a) { return a.id === select.dataset.sms; }); select.value = item.smsStatus; });
       document.querySelectorAll("[data-attendance-intent]").forEach(function (select) { const item = course.applicants.find(function (a) { return a.id === select.dataset.attendanceIntent; }); select.value = item.attendanceIntent; });
+      document.querySelectorAll("[data-training-fee]").forEach(function (select) {
+        const item = course.applicants.find(function (a) { return a.id === select.dataset.trainingFee; });
+        const state = trainingFeeSaveStates.get(item.id);
+        select.value = (state ? state.desired : item.trainingFee) || "";
+        if (state && state.saving) select.setAttribute("aria-busy", "true");
+      });
       document.querySelectorAll("[data-attendance]").forEach(function (select) { const item = course.applicants.find(function (a) { return a.id === select.dataset.attendance; }); select.value = item.attendance; });
       updateSummaries();
       renderSurveyResults();
@@ -1222,6 +1231,7 @@
       if (event.target.dataset.call || event.target.dataset.sms) changeStatus(event);
       if (event.target.dataset.contactNote) saveContactNote(event);
       if (event.target.dataset.attendanceIntent) saveAttendanceIntent(event);
+      if (event.target.dataset.trainingFee) saveTrainingFee(event);
       if (event.target.classList.contains("applicant-check")) syncBulkSelection(".applicant-check", "select-all", "mark-selected-sms-sent");
     });
     document.querySelector("#attendance-body").addEventListener("change", function (event) {
@@ -1306,10 +1316,54 @@
       if (next === "불참") selectedIds.delete(id);
       restoreApplicantSelection(selectedIds);
     }
+    function syncTrainingFeeSelects(applicantId, value, isSaving) {
+      document.querySelectorAll("[data-training-fee]").forEach(function (select) {
+        if (select.dataset.trainingFee !== applicantId) return;
+        select.value = value || "";
+        if (isSaving) select.setAttribute("aria-busy", "true");
+        else select.removeAttribute("aria-busy");
+      });
+    }
+    async function saveTrainingFee(event) {
+      const select = event.target;
+      const id = select.dataset.trainingFee;
+      if (!id) return;
+      const item = course.applicants.find(function (applicant) { return applicant.id === id; });
+      if (!item) return;
+      const next = select.value || null;
+      if (next !== null && !TRAINING_FEE_OPTIONS.includes(next)) {
+        select.value = item.trainingFee || "";
+        return;
+      }
+      let state = trainingFeeSaveStates.get(id);
+      if (!state) {
+        state = { persisted: item.trainingFee || null, desired: item.trainingFee || null, saving: false };
+        trainingFeeSaveStates.set(id, state);
+      }
+      state.desired = next;
+      syncTrainingFeeSelects(id, state.desired, true);
+      if (state.saving) return;
+      state.saving = true;
+      while (state.persisted !== state.desired) {
+        const target = state.desired;
+        const result = await requireDb().from("applications").update({ training_fee: target }).eq("id", id).eq("course_id", course.id);
+        if (result.error) {
+          state.desired = state.persisted;
+          state.saving = false;
+          syncTrainingFeeSelects(id, state.persisted, false);
+          setMessage(document.querySelector("#detail-message"), "훈련비를 저장하지 못했습니다. Supabase SQL 적용 여부를 확인해 주세요.", "error");
+          return;
+        }
+        state.persisted = target;
+        item.trainingFee = target;
+      }
+      state.saving = false;
+      syncTrainingFeeSelects(id, state.persisted, false);
+    }
     function download(applicants) {
       if (!applicants.length) { setMessage(document.querySelector("#detail-message"), "다운로드할 신청자를 선택해 주세요.", "error"); return; }
-      const rows = applicants.map(function (a) { return "<tr><td>" + escapeHtml(a.name) + "</td><td>" + a.phone.replace(/-/g, "") + "</td></tr>"; }).join("");
-      const html = '<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr><th>이름</th><th>전화번호</th></tr></thead><tbody>' + rows + "</tbody></table></body></html>";
+      const rows = applicants.map(function (a) { return "<tr><td>" + escapeHtml(a.name) + "</td><td>" + a.phone.replace(/-/g, "") + "</td><td>" + escapeHtml(a.trainingFee || "미선택") + "</td></tr>"; }).join("");
+      const html = '<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr><th>이름</th><th>전화번호</th><th>훈련비</th></tr></thead><tbody>' + rows + "</tbody></table></body></html>";
       const blob = new Blob(["\ufeff", html], { type: "application/vnd.ms-excel;charset=utf-8" });
       const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
       link.download = course.date.replace(/-/g, "") + "_" + course.name.replace(/[\\/:*?\"<>|]/g, "") + "_신청자명단.xls";
