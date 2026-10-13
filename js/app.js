@@ -967,7 +967,8 @@
     function applicantRow(applicant, index) {
       const rowClasses = [];
       if (applicant.status === "취소") rowClasses.push("row-cancelled");
-      if (applicant.attendanceIntent === "불참") rowClasses.push("row-not-attending");
+      else if (applicant.attendanceIntent === "불참") rowClasses.push("row-not-attending");
+      else if (applicant.attendanceIntent === "참석") rowClasses.push("row-attending");
       return '<tr class="' + rowClasses.join(" ") + '" data-applicant-row="' + escapeHtml(applicant.id) + '">' +
         '<td><input type="checkbox" class="applicant-check" value="' + applicant.id + '" aria-label="' + escapeHtml(applicant.name) + ' 선택"' +
           (applicant.attendanceIntent === "불참" ? ' disabled aria-disabled="true" title="불참 신청자는 선택할 수 없습니다."' : "") + '></td>' +
