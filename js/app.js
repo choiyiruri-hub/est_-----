@@ -11,70 +11,6 @@
     return result.data || [];
   }
 
-  function taggedError(error, source) {
-    const tagged = error instanceof Error ? error : new Error(String(error && error.message || error || "Unknown error"));
-    tagged.dataSource = source;
-    return tagged;
-  }
-
-  async function requireAuthenticatedAdminSession(client) {
-    const sessionResult = await client.auth.getSession();
-    if (sessionResult.error) throw taggedError(sessionResult.error, "auth");
-    const session = sessionResult.data && sessionResult.data.session;
-    if (!session || !session.access_token) {
-      const error = new Error("관리자 로그인 세션이 없습니다.");
-      error.code = "admin_auth_required";
-      error.dataSource = "auth";
-      throw error;
-    }
-    const userResult = await client.auth.getUser();
-    if (userResult.error || !userResult.data || !userResult.data.user) {
-      const error = taggedError(userResult.error || new Error("관리자 로그인 사용자를 확인할 수 없습니다."), "auth");
-      error.code = "admin_auth_required";
-      throw error;
-    }
-    return session;
-  }
-
-  async function fetchPagedRows(queryForRange, source) {
-    const pageSize = 1000;
-    const rows = [];
-    let from = 0;
-    while (true) {
-      const result = await queryForRange(from, from + pageSize - 1);
-      if (result.error) throw taggedError(result.error, source);
-      const page = result.data || [];
-      rows.push.apply(rows, page);
-      if (page.length < pageSize) break;
-      from += pageSize;
-    }
-    return rows;
-  }
-
-  function fetchSurveyResponses(client, courseId) {
-    return fetchPagedRows(function (from, to) {
-      let query = client.from("survey_responses").select("*").order("created_at", { ascending: true }).order("id", { ascending: true });
-      if (courseId) query = query.eq("course_id", courseId);
-      return query.range(from, to);
-    }, "survey_responses");
-  }
-
-  async function fetchSurveyAnswers(client, responseIds) {
-    const ids = Array.from(new Set(responseIds.map(String).filter(Boolean)));
-    if (!ids.length) return [];
-    const rows = [];
-    const chunkSize = 50;
-    for (let index = 0; index < ids.length; index += chunkSize) {
-      const chunk = ids.slice(index, index + chunkSize);
-      const chunkRows = await fetchPagedRows(function (from, to) {
-        return client.from("survey_answers").select("*").in("response_id", chunk)
-          .order("response_id", { ascending: true }).order("question_id", { ascending: true }).range(from, to);
-      }, "survey_answers");
-      rows.push.apply(rows, chunkRows);
-    }
-    return rows;
-  }
-
   function timeText(value) {
     return String(value || "").slice(0, 5);
   }
@@ -186,7 +122,7 @@
     };
   }
 
-  async function getCourses(includePrivate, privateCourseId) {
+  async function getCourses(includePrivate) {
     const client = requireDb();
     const courseResult = await client.from("courses").select("*").order("course_date", { ascending: false });
     const questionResult = await client.from("course_survey_questions").select("*").order("group_order", { ascending: true }).order("display_order", { ascending: true });
@@ -197,35 +133,22 @@
     let answerRows = [];
 
     if (includePrivate) {
-      await requireAuthenticatedAdminSession(client);
-      let applicationQuery = client.from("applications").select("*").order("applied_at", { ascending: true });
-      if (privateCourseId) applicationQuery = applicationQuery.eq("course_id", privateCourseId);
       const results = await Promise.all([
-        applicationQuery,
-        fetchSurveyResponses(client, privateCourseId)
+        client.from("applications").select("*").order("applied_at", { ascending: true }),
+        client.from("survey_responses").select("*"),
+        client.from("survey_answers").select("*")
       ]);
-      if (results[0].error) throw taggedError(results[0].error, "applications");
-      applicationRows = results[0].data || [];
-      responseRows = results[1];
-      answerRows = await fetchSurveyAnswers(client, responseRows.map(function (response) { return response.id; }));
+      applicationRows = throwIfError(results[0]);
+      responseRows = throwIfError(results[1]);
+      answerRows = throwIfError(results[2]);
     }
-
-    const answersByResponseId = new Map();
-    answerRows.forEach(function (answer) {
-      const responseId = String(answer.response_id);
-      if (!answersByResponseId.has(responseId)) answersByResponseId.set(responseId, []);
-      answersByResponseId.get(responseId).push(answer);
-    });
 
     return courseRows.map(function (row) {
       const questions = questionRows.filter(function (question) { return question.course_id === row.id; }).map(questionFromRow);
-      let linkedAnswerCount = 0;
-      const responses = responseRows.filter(function (response) { return String(response.course_id) === String(row.id); }).map(function (response) {
+      const responses = responseRows.filter(function (response) { return response.course_id === row.id; }).map(function (response) {
         const answers = {};
-        const linkedAnswers = answersByResponseId.get(String(response.id)) || [];
-        linkedAnswerCount += linkedAnswers.length;
-        linkedAnswers.forEach(function (answer) {
-          answers[String(answer.question_id)] = answer.score_value == null ? answer.text_value : answer.score_value;
+        answerRows.filter(function (answer) { return answer.response_id === response.id; }).forEach(function (answer) {
+          answers[answer.question_id] = answer.score_value == null ? answer.text_value : answer.score_value;
         });
         return { id: response.id, gender: response.gender || null, age: response.age == null ? null : Number(response.age), createdAt: response.created_at || "", answers: answers };
       }).sort(function (a, b) {
@@ -271,7 +194,6 @@
         description: row.description,
         poster: row.poster_path || "",
         surveyResponsesOpen: row.survey_responses_open !== false,
-        surveyAnswerCount: linkedAnswerCount,
         questions: questions,
         applicants: applicants,
         responses: responses
@@ -836,16 +758,10 @@
   async function initDetail() {
     let courses = [];
     try {
-      courses = await getCourses(true, param("id"));
+      courses = await getCourses(true);
     } catch (error) {
       console.error(error);
-      const authRequired = error && (error.code === "admin_auth_required" || error.dataSource === "auth");
-      const answerLoadFailed = error && error.dataSource === "survey_answers";
-      setMessage(document.querySelector("#detail-message"), authRequired
-        ? "관리자 로그인 상태를 확인할 수 없습니다. 다시 로그인한 후 교육 상세 페이지를 열어 주세요."
-        : answerLoadFailed
-          ? "만족도 답변을 불러오지 못했습니다. 답변 조회 권한 또는 관리자 로그인 상태를 확인해 주세요."
-          : "교육 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
+      setMessage(document.querySelector("#detail-message"), "교육 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
       return;
     }
     const course = selectedCourse(courses);
@@ -1156,30 +1072,7 @@
           '<div class="score-y-axis" aria-hidden="true"><span>' + maxCount + '명</span><span>' + middleCount + '</span><span>0명</span></div>' +
           '<div class="score-plot"><div class="score-bars">' + bars + '</div><div class="score-x-axis"><span>1점</span><span>2점</span><span>3점</span><span>4점</span><span>5점</span></div></div></div></section>';
       }
-      const resultsMessage = document.querySelector("#survey-results-message");
-      const printButton = document.querySelector("#print-survey-results");
-      const answerLookupFailed = course.responses.length > 0 && course.surveyAnswerCount === 0;
       document.querySelector("#response-count").textContent = course.responses.length + "건";
-      if (answerLookupFailed) {
-        setMessage(resultsMessage, "제출 기록은 확인되지만 문항별 답변을 조회하지 못했습니다. 답변 조회 권한 또는 관리자 로그인 상태를 확인해 주세요.", "error");
-        printButton.disabled = true;
-        document.querySelector("#overall-results-summary").innerHTML =
-          '<div class="summary-card"><span>제출 건수</span><strong>' + course.responses.length + '건</strong></div>' +
-          '<div class="summary-card"><span>답변 조회</span><strong>확인 필요</strong></div>';
-        document.querySelector("#overall-score-chart").innerHTML = '<p class="muted">답변 조회 권한 또는 관리자 로그인 상태를 확인해 주세요.</p>';
-        document.querySelector("#score-results").innerHTML = '<p class="muted">문항별 점수를 불러오지 못했습니다.</p>';
-        document.querySelector("#print-score-table-body").innerHTML = '<tr><td colspan="4" class="print-score-empty">답변 조회 상태를 확인해 주세요.</td></tr>';
-        document.querySelector("#score-distributions").innerHTML = '<p class="muted">문항별 상세 분포를 불러오지 못했습니다.</p>';
-        document.querySelector("#text-results").innerHTML = '<p class="muted">주관식 답변을 불러오지 못했습니다.</p>';
-        const respondentSelect = document.querySelector("#respondent-select");
-        respondentSelect.innerHTML = '<option value="">답변 조회 상태 확인 필요</option>';
-        respondentSelect.disabled = true;
-        document.querySelector("#respondent-detail").innerHTML = '<p class="muted">답변 조회 권한 또는 관리자 로그인 상태를 확인해 주세요.</p>';
-        return;
-      }
-      resultsMessage.hidden = true;
-      resultsMessage.textContent = "";
-      printButton.disabled = false;
       const scores = course.questions.filter(function (q) { return q.type === "score"; });
       const scoreValues = [];
       course.responses.forEach(function (response) {
@@ -1239,7 +1132,6 @@
         return '<section class="comment-group"><h4>' + escapeHtml(question.text) + "</h4>" + (answers || '<p class="muted">등록된 답변이 없습니다.</p>') + "</section>";
       }).join("") || '<p class="muted">주관식 문항이 없습니다.</p>';
       const select = document.querySelector("#respondent-select");
-      select.disabled = false;
       select.innerHTML = '<option value="">응답자 선택</option>' + course.responses.map(function (_, index) { return '<option value="' + index + '">응답자 ' + (index + 1) + "</option>"; }).join("");
       document.querySelector("#respondent-detail").innerHTML = '<p class="muted">응답자를 선택하면 상세 답변이 표시됩니다.</p>';
     }
