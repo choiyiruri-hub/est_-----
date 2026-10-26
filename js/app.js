@@ -758,7 +758,7 @@
   async function initDetail() {
     let courses = [];
     try {
-      courses = await getCourses(true);
+      courses = await getCourses(false);
     } catch (error) {
       console.error(error);
       setMessage(document.querySelector("#detail-message"), "교육 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
@@ -769,6 +769,37 @@
       document.querySelector("#detail-title").textContent = "교육 정보가 없습니다.";
       document.querySelectorAll(".tab-panel, .tabs, .heading-actions").forEach(function (element) { element.hidden = true; });
       setMessage(document.querySelector("#detail-message"), "등록된 교육이 없습니다. 교육 목록에서 새 교육을 생성해 주세요.", "info");
+      return;
+    }
+    try {
+      const applicationResult = await requireDb().from("applications").select("*").eq("course_id", course.id).order("applied_at", { ascending: true });
+      course.applicants = throwIfError(applicationResult).map(function (applicant) {
+        return {
+          id: applicant.id,
+          courseId: applicant.course_id,
+          name: applicant.name,
+          phone: applicant.phone,
+          email: applicant.email,
+          resident: applicant.resident_number,
+          organization: applicant.organization,
+          agreed: applicant.privacy_consent,
+          privacyConsent: applicant.privacy_consent,
+          marketingConsent: applicant.marketing_consent,
+          appliedAt: formatDateTime(new Date(applicant.applied_at)),
+          applyType: applicant.application_type,
+          status: applicant.status,
+          duplicate: applicant.is_duplicate,
+          callStatus: applicant.call_status,
+          smsStatus: applicant.sms_status,
+          attendance: applicant.attendance_status,
+          contactNote: applicant.contact_note || "",
+          attendanceIntent: applicant.attendance_intent || "미정",
+          trainingFee: TRAINING_FEE_OPTIONS.includes(applicant.training_fee) ? applicant.training_fee : null
+        };
+      });
+    } catch (error) {
+      console.error("현재 교육 신청자 조회 실패", error);
+      setMessage(document.querySelector("#detail-message"), "신청자 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
       return;
     }
     addCourseLinks(document, course);
@@ -950,12 +981,132 @@
       setMessage(document.querySelector("#detail-message"), "교육 ID가 없어 교육 신청 공유 기능을 사용할 수 없습니다.", "error");
     }
 
+    const surveyResultsMessage = document.querySelector("#survey-results-message");
+    const surveyResultsContent = document.querySelector("#survey-results-content");
+    const surveyResultSections = Array.from(surveyResultsContent.querySelectorAll(".overall-stat-section, .survey-result-grid, .text-result-box"));
+    const printSurveyResultsButton = document.querySelector("#print-survey-results");
+    let surveyResultsStatus = "idle";
+    let surveyResultsRequest = null;
+
+    function renderSurveyLoadState() {
+      const isLoaded = surveyResultsStatus === "loaded";
+      surveyResultSections.forEach(function (section) { section.hidden = !isLoaded; });
+      printSurveyResultsButton.disabled = !isLoaded;
+      if (isLoaded) {
+        surveyResultsMessage.hidden = true;
+        surveyResultsMessage.textContent = "";
+        renderSurveyResults();
+        return;
+      }
+      document.querySelector("#response-count").textContent = course.responses.length
+        ? course.responses.length + "건"
+        : surveyResultsStatus === "loading" ? "확인 중" : "확인 전";
+      if (surveyResultsStatus === "loading") {
+        setMessage(surveyResultsMessage, "현재 교육의 만족도 결과를 불러오는 중입니다.", "info");
+      } else if (surveyResultsStatus === "error") {
+        setMessage(surveyResultsMessage, "답변을 불러오지 못했습니다. 관리자 로그인 상태와 답변 조회 권한을 확인해 주세요.", "error");
+      } else {
+        surveyResultsMessage.hidden = true;
+        surveyResultsMessage.textContent = "";
+      }
+    }
+
+    async function fetchDetailPages(queryPage, source) {
+      const pageSize = 1000;
+      const rows = [];
+      for (let from = 0; ; from += pageSize) {
+        const result = await queryPage(from, from + pageSize - 1);
+        if (result.error) {
+          result.error.querySource = source;
+          throw result.error;
+        }
+        const page = result.data || [];
+        rows.push.apply(rows, page);
+        if (page.length < pageSize) break;
+      }
+      return rows;
+    }
+
+    async function fetchCurrentCourseSurveyResults() {
+      if (surveyResultsStatus === "loaded") return;
+      if (surveyResultsRequest) return surveyResultsRequest;
+      surveyResultsStatus = "loading";
+      renderSurveyLoadState();
+      updateSummaries();
+      surveyResultsRequest = (async function () {
+        try {
+          const client = requireDb();
+          const responseRows = await fetchDetailPages(function (from, to) {
+            return client.from("survey_responses").select("*").eq("course_id", course.id)
+              .order("created_at", { ascending: true }).order("id", { ascending: true }).range(from, to);
+          }, "survey_responses");
+          course.responses = responseRows.map(function (response) {
+            return {
+              id: response.id,
+              gender: response.gender || null,
+              age: response.age == null ? null : Number(response.age),
+              createdAt: response.created_at || "",
+              answers: {}
+            };
+          });
+          updateSummaries();
+          renderSurveyLoadState();
+
+          const responseIds = responseRows.map(function (response) { return response.id; }).filter(function (id) { return id != null; });
+          const answerRows = [];
+          const responseChunkSize = 50;
+          for (let index = 0; index < responseIds.length; index += responseChunkSize) {
+            const chunk = responseIds.slice(index, index + responseChunkSize);
+            const chunkRows = await fetchDetailPages(function (from, to) {
+              return client.from("survey_answers").select("*").in("response_id", chunk)
+                .order("response_id", { ascending: true }).order("question_id", { ascending: true }).range(from, to);
+            }, "survey_answers");
+            answerRows.push.apply(answerRows, chunkRows);
+          }
+          if (responseRows.length && !answerRows.length) {
+            const error = new Error("제출 기록은 있지만 연결된 만족도 답변을 조회하지 못했습니다.");
+            error.querySource = "survey_answers";
+            throw error;
+          }
+
+          const answersByResponseId = new Map();
+          answerRows.forEach(function (answer) {
+            const responseId = String(answer.response_id);
+            if (!answersByResponseId.has(responseId)) answersByResponseId.set(responseId, []);
+            answersByResponseId.get(responseId).push(answer);
+          });
+          course.responses.forEach(function (response) {
+            (answersByResponseId.get(String(response.id)) || []).forEach(function (answer) {
+              response.answers[String(answer.question_id)] = answer.score_value == null ? answer.text_value : answer.score_value;
+            });
+          });
+          surveyResultsStatus = "loaded";
+          updateSummaries();
+          renderSurveyLoadState();
+          console.info("현재 교육 만족도 결과 조회 완료", {
+            courseId: String(course.id),
+            responseCount: responseRows.length,
+            answerCount: answerRows.length
+          });
+        } catch (error) {
+          surveyResultsStatus = "error";
+          console.error("현재 교육 만족도 답변 조회 실패", { courseId: String(course.id), error: error });
+          updateSummaries();
+          renderSurveyLoadState();
+        } finally {
+          surveyResultsRequest = null;
+        }
+      })();
+      return surveyResultsRequest;
+    }
+
     function activateDetailTab(panelId) {
       const targetPanelId = panelId === "results-panel" ? "survey-panel" : panelId;
       const targetButton = Array.from(document.querySelectorAll("[data-tab]")).find(function (button) { return button.dataset.tab === targetPanelId; });
       if (!targetButton) return;
       document.querySelectorAll("[data-tab]").forEach(function (item) { item.classList.toggle("active", item === targetButton); item.setAttribute("aria-selected", item === targetButton); });
       document.querySelectorAll(".tab-panel").forEach(function (panel) { panel.hidden = panel.id !== targetPanelId; });
+      if (targetPanelId === "survey-panel") fetchCurrentCourseSurveyResults();
     }
     document.querySelectorAll("[data-tab]").forEach(function (button) {
       button.addEventListener("click", function () { activateDetailTab(button.dataset.tab); });
@@ -1017,14 +1168,17 @@
       });
       document.querySelectorAll("[data-attendance]").forEach(function (select) { const item = course.applicants.find(function (a) { return a.id === select.dataset.attendance; }); select.value = item.attendance; });
       updateSummaries();
-      renderSurveyResults();
+      renderSurveyLoadState();
     }
     function updateSummaries() {
       const active = activeApplicants(course);
       const attendanceTargets = attendanceApplicants(course);
       document.querySelector("#contact-summary").innerHTML = ["미통화", "부재"].map(function (state) { return '<div class="summary-card"><span>' + state + '</span><strong>' + active.filter(function (a) { return a.callStatus === state; }).length + "명</strong></div>"; }).join("") + '<div class="summary-card"><span>문자 미발송</span><strong>' + active.filter(function (a) { return a.smsStatus === "미발송"; }).length + "명</strong></div>";
       document.querySelector("#attendance-summary").innerHTML = ["출석", "결석", "미확인"].map(function (state) { return '<div class="summary-card"><span>' + state + '</span><strong>' + attendanceTargets.filter(function (a) { return a.attendance === state; }).length + "명</strong></div>"; }).join("");
-      document.querySelector("#survey-summary").innerHTML = '<div class="summary-card"><span>제출 건수</span><strong>' + course.responses.length + '건</strong></div>';
+      const surveyCountText = surveyResultsStatus === "loaded" || course.responses.length
+        ? course.responses.length + "건"
+        : surveyResultsStatus === "loading" ? "확인 중" : "확인 전";
+      document.querySelector("#survey-summary").innerHTML = '<div class="summary-card"><span>제출 건수</span><strong>' + surveyCountText + '</strong></div>';
     }
     function setupApplicantTableScroll() {
       const topScroll = document.querySelector("#applicant-table-scroll-top");
