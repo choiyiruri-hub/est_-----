@@ -1038,14 +1038,14 @@
           const client = requireDb();
           const responseRows = await fetchDetailPages(function (from, to) {
             return client.from("survey_responses").select("*").eq("course_id", course.id)
-              .order("created_at", { ascending: true }).order("id", { ascending: true }).range(from, to);
+              .order("id", { ascending: true }).range(from, to);
           }, "survey_responses");
           course.responses = responseRows.map(function (response) {
             return {
               id: response.id,
               gender: response.gender || null,
               age: response.age == null ? null : Number(response.age),
-              createdAt: response.created_at || "",
+              createdAt: "",
               answers: {}
             };
           });
